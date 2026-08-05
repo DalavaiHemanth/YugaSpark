@@ -324,7 +324,7 @@ export function SaturdayAttendancePanel() {
           <div className="space-y-1">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Session</Label>
             <Select
-              value={activeSessionId}
+              value={activeSessionId || undefined}
               onValueChange={(val) => setSelectedSessionId(val)}
             >
               <SelectTrigger className="w-full sm:w-[320px]">
