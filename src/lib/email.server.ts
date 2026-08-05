@@ -1,7 +1,7 @@
 /** Server-only email delivery through the Resend connector gateway. */
 import { personalize, renderHtml, type Recipient } from "./email-template";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
+const RESEND_API_URL = "https://api.resend.com";
 
 export type { Recipient };
 export { personalize, renderHtml };
@@ -34,9 +34,8 @@ export async function sendBatch(args: {
   body: string;
   recipients: Recipient[];
 }): Promise<SendOutcome[]> {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
   const resendKey = process.env["RESEND_API_KEY"];
-  if (!lovableKey || !resendKey) {
+  if (!resendKey) {
     return args.recipients.map((r) => ({
       email: r.email,
       name: r.name ?? null,
@@ -64,12 +63,11 @@ export async function sendBatch(args: {
 
     let response: Response;
     try {
-      response = await fetch(`${GATEWAY_URL}/emails/batch`, {
+      response = await fetch(`${RESEND_API_URL}/emails/batch`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": resendKey,
+          Authorization: `Bearer ${resendKey}`,
         },
         body: JSON.stringify(payload),
       });
