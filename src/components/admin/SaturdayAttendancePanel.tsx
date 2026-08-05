@@ -65,6 +65,14 @@ export function SaturdayAttendancePanel() {
     },
   });
 
+  const activeBatchObj = activeBatchesQuery.data?.[0];
+
+  useEffect(() => {
+    if (activeBatchObj?.name) {
+      setBatchSemester(activeBatchObj.name);
+    }
+  }, [activeBatchObj?.name]);
+
   const activeSession = (sessions.data ?? []).find((s) => s.id === selectedSessionId) || sessions.data?.[0];
   const activeSessionId = activeSession?.id || "";
 

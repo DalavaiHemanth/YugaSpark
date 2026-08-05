@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS public.batches (
 -- Seed initial standard batches if empty
 INSERT INTO public.batches (name, is_active, notes)
 VALUES 
-  ('2022-2026', true, '4th Year Graduating Cohort'),
-  ('2023-2027', true, '3rd Year Cohort'),
-  ('2024-2028', true, '2nd Year Cohort'),
-  ('2025-2029', true, '1st Year Incoming Cohort')
+  ('2022-2026', false, '4th Year Cohort'),
+  ('2023-2027', true, 'Current Active Club Batch'),
+  ('2024-2028', false, '2nd Year Cohort'),
+  ('2025-2029', false, '1st Year Cohort')
 ON CONFLICT (name) DO NOTHING;
 
 GRANT ALL ON public.batches TO authenticated, service_role;

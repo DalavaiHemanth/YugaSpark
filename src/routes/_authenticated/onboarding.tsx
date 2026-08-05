@@ -50,14 +50,15 @@ function Onboarding() {
   useEffect(() => {
     void supabase
       .from("batches" as any)
-      .select("name")
-      .eq("is_active", true)
+      .select("name, is_active")
       .order("name")
       .then(({ data }) => {
         if (data && data.length > 0) {
+          const active = data.find((b) => b.is_active);
           const names = data.map((b) => b.name);
           setActiveBatchesList(names);
-          if (!names.includes(batch)) setBatch(names[0]);
+          if (active) setBatch(active.name);
+          else setBatch(names[0]);
         }
       });
   }, []);
