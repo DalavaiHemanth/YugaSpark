@@ -418,6 +418,13 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
         await adminSetPassword({ data: { userId: m.id, password: bulkPwd.trim() } });
         ok += 1;
       } catch {
+        failed.push(m.email);
+      }
+    }
+    setBulkBusy(false);
+    if (ok > 0) toast.success(`Password reset for ${ok} member${ok > 1 ? "s" : ""}`);
+    if (failed.length > 0) toast.error(`Failed for ${failed.length}: ${failed.slice(0, 3).join(", ")}`);
+  }
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">

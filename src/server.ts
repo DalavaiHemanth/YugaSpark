@@ -22,9 +22,6 @@ async function getServerEntry(): Promise<ServerEntry> {
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return response;
-
   const body = await response.clone().text();
   if (!isH3SwallowedErrorBody(body)) return response;
 
