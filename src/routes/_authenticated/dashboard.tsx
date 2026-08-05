@@ -14,6 +14,7 @@ import {
   QrCode,
   Clock,
   CalendarCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -112,6 +113,41 @@ function Dashboard() {
     },
   });
 
+  const mySessionDetails = useQuery({
+    queryKey: ["my-detailed-attendance-history", user?.id, profile?.batch],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      try {
+        const [{ data: sessionsData }, { data: attendanceData }] = await Promise.all([
+          supabase
+            .from("club_sessions" as any)
+            .select("*")
+            .order("session_date", { ascending: false }),
+          supabase
+            .from("session_attendance" as any)
+            .select("*")
+            .eq("user_id", user!.id),
+        ]);
+
+        const attMap = new Map((attendanceData ?? []).map((a: any) => [a.session_id, a]));
+        const userBatch = profile?.batch;
+
+        const relevantSessions = (sessionsData ?? []).filter((s: any) => {
+          if (!s.batch_semester || s.batch_semester === "All Batches") return true;
+          if (userBatch && s.batch_semester === userBatch) return true;
+          return false;
+        });
+
+        return relevantSessions.map((s: any) => ({
+          session: s,
+          attendance: attMap.get(s.id) || null,
+        }));
+      } catch {
+        return [];
+      }
+    },
+  });
+
   async function toggle(hackathonId: string, registered: boolean) {
     if (!user) return;
     const q = registered
@@ -203,6 +239,87 @@ function Dashboard() {
           </div>
         </div>
       ) : null}
+
+       {/* Student Club Session Attendance Card */}
+      <div className="mt-8 surface overflow-hidden p-6 sm:p-7">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <CalendarCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold">My Attendance Tracker History</h2>
+                {profile?.batch ? (
+                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                    Batch: {profile.batch}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Live status of your weekly club session attendance records
+              </p>
+            </div>
+          </div>
+
+          {mySessionDetails.data && mySessionDetails.data.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-600 text-white font-mono text-xs px-3 py-1">
+                {mySessionDetails.data.filter((d) => d.attendance).length} / {mySessionDetails.data.length} Sessions Attended
+              </Badge>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 divide-y divide-border rounded-xl border border-border bg-card">
+          {(mySessionDetails.data ?? []).slice(0, 6).map(({ session, attendance }) => {
+            const isPresent = Boolean(attendance);
+            return (
+              <div
+                key={session.id}
+                className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-secondary/30"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-sm font-bold">{session.title}</h3>
+                    <Badge variant="outline" className="text-[9px]">
+                      {session.batch_semester || "All Batches"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    📅 {session.session_date} {session.topic ? `· Topic: ${session.topic}` : ""}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isPresent ? (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 font-semibold text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      PRESENT
+                      {attendance?.scanned_at ? (
+                        <span className="text-[10px] opacity-90 font-normal font-mono ml-1">
+                          ({new Date(attendance.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                        </span>
+                      ) : null}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      ABSENT / NOT MARKED
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {(mySessionDetails.data ?? []).length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              No weekly club session attendance records found yet for your batch.
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <div className="mt-12">
         <h2 className="font-display text-xl font-bold">Upcoming hackathons</h2>
