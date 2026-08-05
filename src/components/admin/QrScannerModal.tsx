@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
-import { QrCode, CheckCircle2, UserCheck, X, Search, Sparkles } from "lucide-react";
+import { QrCode, UserCheck, X, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +32,7 @@ export function QrScannerModal({
   const [manualInput, setManualInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [marking, setMarking] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<any>(null);
 
   async function lookupUser(term: string) {
     let userId = term.trim();
@@ -75,26 +74,46 @@ export function QrScannerModal({
   }
 
   useEffect(() => {
-    // Initialize HTML5 QR Code Scanner in container
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      false,
-    );
+    let isMounted = true;
 
-    scanner.render(
-      (decodedText) => {
-        void lookupUser(decodedText);
-      },
-      () => {
-        // scan error / searching - ignored
-      },
-    );
+    async function initScanner() {
+      if (typeof window === "undefined") return;
+      try {
+        const { Html5QrcodeScanner } = await import("html5-qrcode");
+        if (!isMounted) return;
 
-    scannerRef.current = scanner;
+        const scanner = new Html5QrcodeScanner(
+          "qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false,
+        );
+
+        scanner.render(
+          (decodedText) => {
+            void lookupUser(decodedText);
+          },
+          () => {
+            // scan error / searching - ignored
+          },
+        );
+
+        scannerRef.current = scanner;
+      } catch (err) {
+        console.error("Failed to load QR scanner:", err);
+      }
+    }
+
+    void initScanner();
 
     return () => {
-      scanner.clear().catch(() => undefined);
+      isMounted = false;
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.clear().catch(() => undefined);
+        } catch {
+          // ignore clear error
+        }
+      }
     };
   }, []);
 
@@ -142,7 +161,7 @@ export function QrScannerModal({
           </span>
           <div>
             <h2 className="font-display text-lg font-bold">QR Attendance Check-in</h2>
-            <p className="text-xs text-muted-foreground">Event: {hackathonTitle}</p>
+            <p className="text-xs text-muted-foreground">Event / Session: {hackathonTitle}</p>
           </div>
         </div>
 
