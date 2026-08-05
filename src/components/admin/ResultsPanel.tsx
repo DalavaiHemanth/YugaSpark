@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { announceResults, emailAttendees } from "@/lib/notify";
+import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ export function ResultsPanel() {
   const [hid, setHid] = useState("");
   const [draft, setDraft] = useState<Record<string, Row>>({});
   const [announcing, setAnnouncing] = useState(false);
+  const [showQrScanner, setShowQrScanner] = useState(false);
 
   const hackathons = useQuery({
     queryKey: ["hackathons"],
@@ -36,6 +38,8 @@ export function ResultsPanel() {
       return data;
     },
   });
+
+  const selectedHackathon = (hackathons.data ?? []).find((h) => h.id === hid);
 
   const members = useQuery({
     queryKey: ["admin-members"],
@@ -100,7 +104,7 @@ export function ResultsPanel() {
 
   async function exportResultsToExcel() {
     if (!hid) return;
-    const title = hackathons.data?.find((h) => h.id === hid)?.title || "Results";
+    const title = selectedHackathon?.title || "Results";
     try {
       const XLSX = await import("xlsx");
       const rows = (members.data ?? []).map((m) => {
@@ -125,7 +129,7 @@ export function ResultsPanel() {
 
   async function announce() {
     if (!hid || !user) return;
-    const title = hackathons.data?.find((h) => h.id === hid)?.title;
+    const title = selectedHackathon?.title;
     if (!title) return;
     setAnnouncing(true);
     const error = await announceResults(title, user.id);
@@ -174,6 +178,15 @@ export function ResultsPanel() {
 
   return (
     <div className="space-y-6">
+      {showQrScanner && selectedHackathon ? (
+        <QrScannerModal
+          hackathonId={selectedHackathon.id}
+          hackathonTitle={selectedHackathon.title}
+          onClose={() => setShowQrScanner(false)}
+          onSuccess={() => void results.refetch()}
+        />
+      ) : null}
+
       <div className="surface p-6">
         <Label>Hackathon</Label>
         <Select value={hid} onValueChange={(v) => { setHid(v); setDraft({}); }}>
@@ -193,7 +206,15 @@ export function ResultsPanel() {
           automatically for attended members; upload an official file to override the generated one.
         </p>
         {hid ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setShowQrScanner(true)}
+            >
+              <QrCode className="h-4 w-4" />
+              Scan QR Attendance
+            </Button>
             <Button size="sm" onClick={announce} disabled={announcing}>
               {announcing ? "Announcing…" : "Announce results to members"}
             </Button>
