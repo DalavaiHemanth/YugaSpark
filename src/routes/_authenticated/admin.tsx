@@ -58,6 +58,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { announceHackathon, emailAllMembers } from "@/lib/notify";
+import { SaturdayAttendancePanel } from "@/components/admin/SaturdayAttendancePanel";
 import { EmailLogPanel } from "@/components/admin/EmailLogPanel";
 import { DomainPanel } from "@/components/admin/DomainPanel";
 
@@ -67,6 +68,7 @@ const DOMAIN = "@rgmcet.edu.in";
 
 const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
   members: (query) => <MembersPanel initialQuery={query} />,
+  saturday_attendance: () => <SaturdayAttendancePanel />,
   mail: () => <MailPanel />,
   emaillog: () => <EmailLogPanel />,
   domains: () => <DomainPanel />,

@@ -12,10 +12,12 @@ import {
   Stethoscope,
   Send,
   Globe,
+  CalendarCheck,
 } from "lucide-react";
 
 export type SectionKey =
   | "members"
+  | "saturday_attendance"
   | "mail"
   | "emaillog"
   | "domains"
@@ -31,6 +33,7 @@ export type SectionKey =
 
 export const SECTION_KEYS: SectionKey[] = [
   "members",
+  "saturday_attendance",
   "mail",
   "emaillog",
   "domains",
@@ -64,6 +67,13 @@ export const ADMIN_NAV: { group: string; items: SectionMeta[] }[] = [
         icon: Users,
         title: "Members",
         description: "Import students, review profiles, reset passwords and manage accounts.",
+      },
+      {
+        key: "saturday_attendance",
+        label: "Saturday Tracker",
+        icon: CalendarCheck,
+        title: "Saturday Club Session Attendance",
+        description: "Weekly Saturday attendance tracker per batch/semester with QR scanning and Excel exports.",
       },
       {
         key: "mail",
