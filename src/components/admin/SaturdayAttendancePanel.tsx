@@ -34,12 +34,16 @@ export function SaturdayAttendancePanel() {
   const sessions = useQuery({
     queryKey: ["club-sessions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("club_sessions" as any)
-        .select("*")
-        .order("session_date", { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as any[];
+      try {
+        const { data, error } = await supabase
+          .from("club_sessions" as any)
+          .select("*")
+          .order("session_date", { ascending: false });
+        if (error) return [];
+        return (data ?? []) as any[];
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -50,12 +54,16 @@ export function SaturdayAttendancePanel() {
   const members = useQuery({
     queryKey: ["saturday-members"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, registration_number, year, batch, is_active")
-        .order("full_name");
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, registration_number, year, batch, is_active")
+          .order("full_name");
+        if (error) return [];
+        return data ?? [];
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -69,12 +77,16 @@ export function SaturdayAttendancePanel() {
     queryKey: ["session-attendance", activeSessionId],
     enabled: Boolean(activeSessionId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("session_attendance" as any)
-        .select("*")
-        .eq("session_id", activeSessionId);
-      if (error) throw new Error(error.message);
-      return (data ?? []) as any[];
+      try {
+        const { data, error } = await supabase
+          .from("session_attendance" as any)
+          .select("*")
+          .eq("session_id", activeSessionId);
+        if (error) return [];
+        return (data ?? []) as any[];
+      } catch {
+        return [];
+      }
     },
   });
 

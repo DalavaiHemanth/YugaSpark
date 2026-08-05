@@ -84,6 +84,7 @@ const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
 };
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  ssr: false,
   validateSearch: (search: Record<string, unknown>) => {
     const section = String(search['section'] ?? "");
     return { section: (SECTION_KEYS as string[]).includes(section) ? (section as SectionKey) : undefined };
