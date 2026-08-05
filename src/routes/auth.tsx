@@ -15,6 +15,7 @@ const TITLE = "Sign in — Yuga Spark";
 const DESCRIPTION = "Sign in or join the Yuga Spark hackathon club portal.";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   validateSearch: (s: Record<string, unknown>): { next?: string | undefined } => ({
     next: typeof s['next'] === "string" && s['next'].startsWith("/") && !s['next'].startsWith("//")
       ? s['next']
