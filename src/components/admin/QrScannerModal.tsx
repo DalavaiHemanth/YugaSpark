@@ -35,14 +35,15 @@ export function QrScannerModal({
   const scannerRef = useRef<any>(null);
 
   async function lookupUser(term: string) {
-    let userId = term.trim();
+    let searchKey = term.trim();
+    if (!searchKey) return;
 
     // Try parsing JSON payload from badge QR
-    if (userId.startsWith("{")) {
+    if (searchKey.startsWith("{")) {
       try {
-        const parsed = JSON.parse(userId);
-        if (parsed.id) userId = parsed.id;
-        else if (parsed.reg) userId = parsed.reg;
+        const parsed = JSON.parse(searchKey);
+        if (parsed.id) searchKey = parsed.id;
+        else if (parsed.reg) searchKey = parsed.reg;
       } catch {
         // ignore parse error
       }
@@ -50,12 +51,19 @@ export function QrScannerModal({
 
     setBusy(true);
     try {
-      // Query profiles by ID, email, or registration_number
-      const { data, error } = await supabase
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchKey);
+
+      let query = supabase
         .from("profiles")
-        .select("id, full_name, email, registration_number, year, photo_url")
-        .or(`id.eq.${userId},registration_number.eq.${userId},email.eq.${userId}`)
-        .maybeSingle();
+        .select("id, full_name, email, registration_number, year, photo_url");
+
+      if (isUuid) {
+        query = query.or(`id.eq.${searchKey},registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
+      } else {
+        query = query.or(`registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
+      }
+
+      const { data, error } = await query.limit(1).maybeSingle();
 
       if (error) throw new Error(error.message);
       if (!data) {
@@ -121,18 +129,30 @@ export function QrScannerModal({
     if (!student) return;
     setMarking(true);
     try {
-      // Upsert attendance into hackathon_results
-      const { error } = await supabase.from("hackathon_results").upsert(
+      // First try session_attendance table
+      const { error: sessionErr } = await supabase.from("session_attendance" as any).upsert(
         {
-          hackathon_id: hackathonId,
+          session_id: hackathonId,
           user_id: student.id,
-          attended: true,
-          points: 10, // default participation points
+          status: "present",
+          scanned_at: new Date().toISOString(),
         },
-        { onConflict: "hackathon_id,user_id" },
+        { onConflict: "session_id,user_id" },
       );
 
-      if (error) throw new Error(error.message);
+      if (sessionErr) {
+        // Fallback to hackathon_results table if for a hackathon
+        const { error } = await supabase.from("hackathon_results").upsert(
+          {
+            hackathon_id: hackathonId,
+            user_id: student.id,
+            attended: true,
+            points: 10,
+          },
+          { onConflict: "hackathon_id,user_id" },
+        );
+        if (error) throw new Error(error.message);
+      }
 
       toast.success(`Attendance marked for ${student.full_name || student.email} (+10 pts)`);
       setStudent(null);
@@ -148,95 +168,86 @@ export function QrScannerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
       <div className="surface relative w-full max-w-lg overflow-hidden p-6 shadow-2xl">
         <button
-          type="button"
           onClick={onClose}
           className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-            <QrCode className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="font-display text-lg font-bold">QR Attendance Check-in</h2>
-            <p className="text-xs text-muted-foreground">Event / Session: {hackathonTitle}</p>
-          </div>
+        <div className="flex items-center gap-2 text-primary font-display font-bold">
+          <QrCode className="h-5 w-5" />
+          <span>QR Attendance Check-in</span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Event / Session: <strong className="text-foreground">{hackathonTitle}</strong>
+        </p>
+
+        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/40 p-2">
+          <div id="qr-reader" className="w-full text-center" />
         </div>
 
-        {/* Found Student Result Box */}
+        {/* Manual Roll Number / Email Search input */}
+        <div className="mt-4 space-y-2">
+          <Label className="text-xs text-muted-foreground font-normal">
+            Or type student Email / Reg Number manually:
+          </Label>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (manualInput.trim()) void lookupUser(manualInput);
+            }}
+          >
+            <Input
+              placeholder="e.g. 23091A3245 or student@rgmcet.edu.in"
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              className="text-xs"
+            />
+            <Button type="submit" size="sm" disabled={busy || !manualInput.trim()}>
+              <Search className="mr-1 h-3.5 w-3.5" /> Find
+            </Button>
+          </form>
+        </div>
+
+        {/* Found Student Confirmation Card */}
         {student ? (
-          <div className="mt-5 rounded-xl border border-primary/40 bg-primary/5 p-4">
-            <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary/20 text-primary font-mono text-base font-bold">
-                {(student.full_name || student.email).slice(0, 2).toUpperCase()}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="truncate font-bold text-foreground">
-                    {student.full_name || "Unnamed Student"}
-                  </h3>
-                  <Badge variant="secondary" className="text-[10px]">
-                    Ready for Check-in
+          <div className="mt-4 rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-display font-bold text-sm text-foreground">
+                  {student.full_name || "Unnamed Student"}
+                </h4>
+                <p className="text-xs font-mono text-muted-foreground">{student.email}</p>
+                <div className="mt-1 flex items-center gap-2 text-xs">
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    Reg: {student.registration_number || "N/A"}
                   </Badge>
+                  {student.year ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {student.year}
+                    </Badge>
+                  ) : null}
                 </div>
-                <p className="truncate font-mono text-xs text-muted-foreground">{student.email}</p>
-                <p className="text-xs text-muted-foreground">
-                  Reg: {student.registration_number || "—"} · Year: {student.year || "—"}
-                </p>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-2">
+            <div className="flex gap-2 pt-1">
               <Button
-                onClick={markAttendance}
+                size="sm"
+                className="w-full gap-1.5"
                 disabled={marking}
-                className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => void markAttendance()}
               >
                 <UserCheck className="h-4 w-4" />
-                {marking ? "Marking…" : "Confirm Check-in (+10 pts)"}
+                {marking ? "Marking…" : "Confirm & Mark Attendance (+10 pts)"}
               </Button>
-              <Button variant="outline" onClick={() => setStudent(null)}>
-                Clear
+              <Button size="sm" variant="ghost" onClick={() => setStudent(null)}>
+                Cancel
               </Button>
             </div>
           </div>
         ) : null}
-
-        {/* Camera Scanner View */}
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/5 dark:bg-black/30">
-          <div id="qr-reader" className="w-full" />
-        </div>
-
-        {/* Manual Lookup Search */}
-        <div className="mt-4 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">
-            Or type student Email / Reg Number manually:
-          </p>
-          <div className="flex gap-2">
-            <Input
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              placeholder="e.g. 21091A0501 or email..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void lookupUser(manualInput);
-                }
-              }}
-            />
-            <Button
-              variant="secondary"
-              disabled={busy || !manualInput.trim()}
-              onClick={() => void lookupUser(manualInput)}
-              className="gap-1.5"
-            >
-              <Search className="h-4 w-4" />
-              Find
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   );
