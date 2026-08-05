@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { QrCode, UserCheck, X, Search } from "lucide-react";
+import { QrCode, UserCheck, X, Search, CameraOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,13 +32,13 @@ export function QrScannerModal({
   const [manualInput, setManualInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [marking, setMarking] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
   const scannerRef = useRef<any>(null);
 
   async function lookupUser(term: string) {
     let searchKey = term.trim();
     if (!searchKey) return;
 
-    // Try parsing JSON payload from badge QR
     if (searchKey.startsWith("{")) {
       try {
         const parsed = JSON.parse(searchKey);
@@ -83,10 +83,17 @@ export function QrScannerModal({
 
   useEffect(() => {
     let isMounted = true;
+    let timer: any = null;
 
     async function initScanner() {
       if (typeof window === "undefined") return;
       try {
+        const container = document.getElementById("qr-reader");
+        if (!container) {
+          if (isMounted) timer = setTimeout(initScanner, 100);
+          return;
+        }
+
         const { Html5QrcodeScanner } = await import("html5-qrcode");
         if (!isMounted) return;
 
@@ -98,23 +105,25 @@ export function QrScannerModal({
 
         scanner.render(
           (decodedText) => {
-            void lookupUser(decodedText);
+            if (isMounted) void lookupUser(decodedText);
           },
-          () => {
-            // scan error / searching - ignored
+          (err) => {
+            // Scanner error / frame search - ignore non-fatal
           },
         );
 
         scannerRef.current = scanner;
       } catch (err) {
-        console.error("Failed to load QR scanner:", err);
+        console.warn("QR Scanner initialization notice:", err);
+        if (isMounted) setCameraError(true);
       }
     }
 
-    void initScanner();
+    timer = setTimeout(initScanner, 150);
 
     return () => {
       isMounted = false;
+      if (timer) clearTimeout(timer);
       if (scannerRef.current) {
         try {
           scannerRef.current.clear().catch(() => undefined);
@@ -129,7 +138,6 @@ export function QrScannerModal({
     if (!student) return;
     setMarking(true);
     try {
-      // First try session_attendance table
       const { error: sessionErr } = await supabase.from("session_attendance" as any).upsert(
         {
           session_id: hackathonId,
@@ -141,7 +149,6 @@ export function QrScannerModal({
       );
 
       if (sessionErr) {
-        // Fallback to hackathon_results table if for a hackathon
         const { error } = await supabase.from("hackathon_results").upsert(
           {
             hackathon_id: hackathonId,
@@ -182,8 +189,17 @@ export function QrScannerModal({
           Event / Session: <strong className="text-foreground">{hackathonTitle}</strong>
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/40 p-2">
-          <div id="qr-reader" className="w-full text-center" />
+        {/* Camera Scanner Viewport */}
+        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/40 p-2 min-h-[260px] flex items-center justify-center">
+          {cameraError ? (
+            <div className="p-6 text-center text-xs text-muted-foreground space-y-2">
+              <CameraOff className="mx-auto h-8 w-8 text-muted-foreground opacity-60" />
+              <p className="font-semibold text-foreground">Camera Feed Unavailable</p>
+              <p>Please use manual Roll Number / Email lookup below to mark attendance.</p>
+            </div>
+          ) : (
+            <div id="qr-reader" className="w-full text-center" />
+          )}
         </div>
 
         {/* Manual Roll Number / Email Search input */}
