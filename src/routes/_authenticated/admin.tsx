@@ -57,6 +57,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { announceHackathon, emailAllMembers } from "@/lib/notify";
 import { SaturdayAttendancePanel } from "@/components/admin/SaturdayAttendancePanel";
 import { EmailLogPanel } from "@/components/admin/EmailLogPanel";
