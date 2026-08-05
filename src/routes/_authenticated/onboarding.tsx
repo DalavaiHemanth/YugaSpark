@@ -41,10 +41,26 @@ function Onboarding() {
   const [regNo, setRegNo] = useState("");
   const [year, setYear] = useState("");
   const [batch, setBatch] = useState("2023-2027");
+  const [activeBatchesList, setActiveBatchesList] = useState<string[]>(BATCHES);
   const [personalEmail, setPersonalEmail] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [resume, setResume] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void supabase
+      .from("batches" as any)
+      .select("name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const names = data.map((b) => b.name);
+          setActiveBatchesList(names);
+          if (!names.includes(batch)) setBatch(names[0]);
+        }
+      });
+  }, []);
 
   useEffect(() => {
     if (!loading && profile?.profile_completed) navigate({ to: "/dashboard", replace: true });
@@ -146,9 +162,9 @@ function Onboarding() {
                   <SelectValue placeholder="Select batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BATCHES.map((b) => (
+                  {activeBatchesList.map((b) => (
                     <SelectItem key={b} value={b}>
-                      {b}
+                      Batch: {b}
                     </SelectItem>
                   ))}
                 </SelectContent>

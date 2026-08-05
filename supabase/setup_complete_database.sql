@@ -492,3 +492,33 @@ CREATE INDEX IF NOT EXISTS idx_session_attendance_session ON public.session_atte
 CREATE INDEX IF NOT EXISTS idx_session_attendance_user ON public.session_attendance(user_id);
 CREATE INDEX IF NOT EXISTS idx_club_sessions_date ON public.club_sessions(session_date DESC);
 
+-- 22. Batches Management Table
+CREATE TABLE IF NOT EXISTS public.batches (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text UNIQUE NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.batches (name, is_active, notes)
+VALUES 
+  ('2022-2026', true, '4th Year Graduating Cohort'),
+  ('2023-2027', true, '3rd Year Cohort'),
+  ('2024-2028', true, '2nd Year Cohort'),
+  ('2025-2029', true, '1st Year Incoming Cohort')
+ON CONFLICT (name) DO NOTHING;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.batches TO authenticated;
+GRANT ALL ON public.batches TO service_role;
+ALTER TABLE public.batches ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "batches_read" ON public.batches;
+CREATE POLICY "batches_read" ON public.batches FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "batches_admin" ON public.batches;
+CREATE POLICY "batches_admin" ON public.batches FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+

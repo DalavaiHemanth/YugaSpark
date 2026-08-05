@@ -60,6 +60,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { announceHackathon, emailAllMembers } from "@/lib/notify";
 import { SaturdayAttendancePanel } from "@/components/admin/SaturdayAttendancePanel";
+import { BatchesPanel } from "@/components/admin/BatchesPanel";
 import { EmailLogPanel } from "@/components/admin/EmailLogPanel";
 import { DomainPanel } from "@/components/admin/DomainPanel";
 
@@ -69,6 +70,7 @@ const DOMAIN = "@rgmcet.edu.in";
 
 const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
   members: (query) => <MembersPanel initialQuery={query} />,
+  batches: () => <BatchesPanel />,
   saturday_attendance: () => <SaturdayAttendancePanel />,
   mail: () => <MailPanel />,
   emaillog: () => <EmailLogPanel />,

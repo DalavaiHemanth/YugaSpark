@@ -13,10 +13,12 @@ import {
   Send,
   Globe,
   CalendarCheck,
+  Layers,
 } from "lucide-react";
 
 export type SectionKey =
   | "members"
+  | "batches"
   | "saturday_attendance"
   | "mail"
   | "emaillog"
@@ -33,6 +35,7 @@ export type SectionKey =
 
 export const SECTION_KEYS: SectionKey[] = [
   "members",
+  "batches",
   "saturday_attendance",
   "mail",
   "emaillog",
@@ -67,6 +70,13 @@ export const ADMIN_NAV: { group: string; items: SectionMeta[] }[] = [
         icon: Users,
         title: "Members",
         description: "Import students, review profiles, reset passwords and manage accounts.",
+      },
+      {
+        key: "batches",
+        label: "Manage Batches",
+        icon: Layers,
+        title: "Batch Maintenance & Cohorts",
+        description: "Create, activate, deactivate and manage student graduating batches across the club.",
       },
       {
         key: "saturday_attendance",

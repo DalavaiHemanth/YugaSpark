@@ -47,6 +47,24 @@ export function SaturdayAttendancePanel() {
     },
   });
 
+  // 1b. Fetch Active Batches defined by Admin
+  const activeBatchesQuery = useQuery({
+    queryKey: ["active-batches-list"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("batches" as any)
+          .select("id, name")
+          .eq("is_active", true)
+          .order("name");
+        if (error) return [];
+        return (data ?? []) as { id: string; name: string }[];
+      } catch {
+        return [];
+      }
+    },
+  });
+
   const activeSession = (sessions.data ?? []).find((s) => s.id === selectedSessionId) || sessions.data?.[0];
   const activeSessionId = activeSession?.id || "";
 
@@ -250,12 +268,27 @@ export function SaturdayAttendancePanel() {
 
           <div className="space-y-1.5">
             <Label htmlFor="session-batch" className="text-xs">Target Batch</Label>
-            <Input
-              id="session-batch"
-              value={batchSemester}
-              onChange={(e) => setBatchSemester(e.target.value)}
-              placeholder="e.g. 2023-2027 or All Batches"
-            />
+            <Select value={batchSemester} onValueChange={setBatchSemester}>
+              <SelectTrigger id="session-batch" className="h-9 text-xs bg-background">
+                <SelectValue placeholder="Select Target Batch" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Batches">All Batches</SelectItem>
+                {activeBatchesQuery.data && activeBatchesQuery.data.length > 0 ? (
+                  activeBatchesQuery.data.map((b) => (
+                    <SelectItem key={b.id} value={b.name}>
+                      Batch: {b.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  availableBatches.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      Batch: {b}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
