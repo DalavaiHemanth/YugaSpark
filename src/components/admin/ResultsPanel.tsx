@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { announceResults, emailAttendees } from "@/lib/notify";
@@ -97,6 +98,31 @@ export function ResultsPanel() {
     void results.refetch();
   }
 
+  async function exportResultsToExcel() {
+    if (!hid) return;
+    const title = hackathons.data?.find((h) => h.id === hid)?.title || "Results";
+    try {
+      const XLSX = await import("xlsx");
+      const rows = (members.data ?? []).map((m) => {
+        const row = rowFor(m.id);
+        return {
+          "Full Name": m.full_name || "—",
+          Email: m.email,
+          Attended: row.attended ? "Yes" : "No",
+          Placement: row.placement ? `Rank ${row.placement}` : "—",
+          "Points Awarded": row.points || "0",
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Results");
+      XLSX.writeFile(wb, `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}_Results.xlsx`);
+      toast.success("Results exported to Excel");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   async function announce() {
     if (!hid || !user) return;
     const title = hackathons.data?.find((h) => h.id === hid)?.title;
@@ -167,9 +193,15 @@ export function ResultsPanel() {
           automatically for attended members; upload an official file to override the generated one.
         </p>
         {hid ? (
-          <Button className="mt-4" size="sm" onClick={announce} disabled={announcing}>
-            {announcing ? "Announcing…" : "Announce results to members"}
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button size="sm" onClick={announce} disabled={announcing}>
+              {announcing ? "Announcing…" : "Announce results to members"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportResultsToExcel} className="gap-1.5">
+              <Download className="h-3.5 w-3.5 text-primary" />
+              Export Results to Excel
+            </Button>
+          </div>
         ) : null}
       </div>
 

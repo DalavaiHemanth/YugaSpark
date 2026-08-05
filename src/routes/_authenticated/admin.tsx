@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ADMIN_NAV, SECTION_KEYS, type SectionKey } from "@/lib/admin-nav";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -39,6 +39,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
+import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { SystemChecksPanel } from "@/components/admin/SystemChecksPanel";
 import { AdminSearch, type SearchHit } from "@/components/admin/AdminSearch";
 import { ResultsPanel } from "@/components/admin/ResultsPanel";
@@ -276,6 +277,7 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
   }
 
   async function importSheet(file: File) {
+    const XLSX = await import("xlsx");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf);
     const found: string[] = [];
@@ -296,6 +298,30 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
       }
     }
     await createFromList(found);
+  }
+
+  async function exportMembersToExcel() {
+    try {
+      const XLSX = await import("xlsx");
+      const rows = (members.data ?? []).map((m) => ({
+        "Full Name": m.full_name || "—",
+        Email: m.email,
+        "Registration Number": m.registration_number || "—",
+        Year: m.year || "—",
+        "Personal Email": m.personal_email || "—",
+        Status: !m.is_active ? "Inactive" : m.profile_completed ? "Complete" : "Pending",
+        "Profile Completed": m.profile_completed ? "Yes" : "No",
+        "Has Photo": m.photo_url ? "Yes" : "No",
+        "Has Resume": m.resume_url ? "Yes" : "No",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Members");
+      XLSX.writeFile(wb, "Yuga_Spark_Members.xlsx");
+      toast.success("Members exported to Excel");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
   }
 
   const visible = (() => {
@@ -457,9 +483,20 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
               />
               <span className="font-display text-sm font-bold">Members</span>
             </label>
-            <Badge variant="secondary" className="font-mono text-[11px]">
-              {visible.length}/{members.data?.length ?? 0}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => void exportMembersToExcel()}
+              >
+                <Download className="h-3.5 w-3.5 text-primary" />
+                Export Excel
+              </Button>
+              <Badge variant="secondary" className="font-mono text-[11px]">
+                {visible.length}/{members.data?.length ?? 0}
+              </Badge>
+            </div>
           </div>
           <Input
             className="bg-background"
@@ -881,6 +918,7 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
 
 function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }) {
   const { user } = useAuth();
+  const [scanHackathon, setScanHackathon] = useState<{ id: string; title: string } | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -984,13 +1022,22 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
         registration_deadline: "",
         banner_url: "",
       });
-      await hackathons.refetch();
+      void hackathons.refetch();
     }
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <form onSubmit={create} className="surface space-y-4 p-4 sm:p-6 lg:sticky lg:top-20 lg:self-start">
+    <div className="space-y-6">
+      {scanHackathon ? (
+        <QrScannerModal
+          hackathonId={scanHackathon.id}
+          hackathonTitle={scanHackathon.title}
+          onClose={() => setScanHackathon(null)}
+          onSuccess={() => void hackathons.refetch()}
+        />
+      ) : null}
+
+      <form onSubmit={create} className="surface space-y-4 p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
             <CalendarPlus className="h-4 w-4" />
@@ -1045,39 +1092,31 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
             />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-2">
-            <Label htmlFor="venue">Venue</Label>
-            <Input
-              id="venue"
-              value={form.venue}
-              onChange={(e) => setForm({ ...form, venue: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="team_min">Team min</Label>
+            <Label htmlFor="team_min">Min team</Label>
             <Input
               id="team_min"
               type="number"
               min={1}
               max={10}
+              required
               value={form.team_min}
               onChange={(e) => setForm({ ...form, team_min: Number(e.target.value) })}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="team_max">Team max</Label>
+            <Label htmlFor="team_max">Max team</Label>
             <Input
               id="team_max"
               type="number"
               min={1}
               max={10}
+              required
               value={form.team_max}
               onChange={(e) => setForm({ ...form, team_max: Number(e.target.value) })}
             />
           </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="mode">Mode</Label>
             <select
@@ -1127,20 +1166,19 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
         </div>
         <ul className="divide-y divide-border">
           {visibleHackathons.map((h) => (
-            <HackathonRow key={h.id} hackathon={h} onChanged={() => hackathons.refetch()} />
+            <HackathonRow
+              key={h.id}
+              hackathon={h}
+              onChanged={() => void hackathons.refetch()}
+              onScanQr={() => setScanHackathon({ id: h.id, title: h.title })}
+            />
           ))}
           {visibleHackathons.length === 0 ? (
             <li className="p-5">
               <EmptyState
-                tone="quiet"
-                icon={CalendarDays}
-                title="No hackathons yet"
-                description="Publish your first event — it appears on every member's dashboard instantly."
-                steps={[
-                  "Fill in the title, date and timings on the left",
-                  "Set the team size range students must form squads within",
-                  "Publish — registrations open right away",
-                ]}
+                icon={CalendarPlus}
+                title="No hackathons match"
+                description="Try clearing your search or publish a new hackathon above."
               />
             </li>
           ) : null}
@@ -1168,9 +1206,10 @@ type HackathonRowProps = {
     registration_open: boolean;
   };
   onChanged: () => void;
+  onScanQr: () => void;
 };
 
-function HackathonRow({ hackathon: h, onChanged }: HackathonRowProps) {
+function HackathonRow({ hackathon: h, onChanged, onScanQr }: HackathonRowProps) {
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState({
     title: h.title,
@@ -1233,6 +1272,15 @@ function HackathonRow({ hackathon: h, onChanged }: HackathonRowProps) {
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+            onClick={onScanQr}
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            Scan QR
+          </Button>
           <span className="text-xs text-muted-foreground">Reg</span>
           <Switch
             checked={h.registration_open}

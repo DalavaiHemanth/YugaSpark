@@ -27,6 +27,14 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+// In-memory auth cache with 5-minute TTL to prevent duplicate DB hits under 50-60 user load
+let cachedUid: string | null = null;
+let cachedProfile: Profile | null = null;
+let cachedIsAdmin = false;
+let cachedIsOwner = false;
+let lastFetchedAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -34,21 +42,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = async (uid: string | undefined) => {
+  const load = async (uid: string | undefined, forceRefresh = false) => {
     if (!uid) {
       setProfile(null);
       setIsAdmin(false);
       setIsOwner(false);
+      cachedUid = null;
+      cachedProfile = null;
+      cachedIsAdmin = false;
+      cachedIsOwner = false;
+      lastFetchedAt = 0;
       return;
     }
+
+    const now = Date.now();
+    if (!forceRefresh && cachedUid === uid && now - lastFetchedAt < CACHE_TTL_MS) {
+      setProfile(cachedProfile);
+      setIsAdmin(cachedIsAdmin);
+      setIsOwner(cachedIsOwner);
+      return;
+    }
+
     const [{ data: p }, { data: roles }, { data: owner }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
       supabase.rpc("is_owner", { _user_id: uid }),
     ]);
-    setProfile((p as Profile) ?? null);
-    setIsAdmin(Boolean(roles?.some((r) => r.role === "admin")));
-    setIsOwner(Boolean(owner));
+
+    const nextProfile = (p as Profile) ?? null;
+    const nextAdmin = Boolean(roles?.some((r) => r.role === "admin"));
+    const nextOwner = Boolean(owner);
+
+    cachedUid = uid;
+    cachedProfile = nextProfile;
+    cachedIsAdmin = nextAdmin;
+    cachedIsOwner = nextOwner;
+    lastFetchedAt = Date.now();
+
+    setProfile(nextProfile);
+    setIsAdmin(nextAdmin);
+    setIsOwner(nextOwner);
   };
 
   useEffect(() => {
@@ -78,13 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin,
     isOwner,
     refresh: async () => {
-      await load(session?.user?.id);
+      await load(session?.user?.id, true);
     },
     signOut: async () => {
       await supabase.auth.signOut();
-      setProfile(null);
-      setIsAdmin(false);
-      setIsOwner(false);
+      load(undefined);
     },
   };
 

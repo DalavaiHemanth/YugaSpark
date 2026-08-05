@@ -1,0 +1,17 @@
+{
+  "short_name": "Yuga Spark",
+  "name": "Yuga Spark — RGMCET Hackathon Club Portal",
+  "description": "The official hackathon club platform for RGMCET students to find squads, join events, and earn credentials.",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d1117",
+  "background_color": "#0d1117"
+}

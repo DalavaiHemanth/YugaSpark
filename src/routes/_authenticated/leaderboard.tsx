@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Trophy, Medal, Flame } from "lucide-react";
+import { toast } from "sonner";
+import { Trophy, Medal, Flame, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, PageHeader, EmptyState } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ function LeaderboardPage() {
 
   const rows = useQuery({
     queryKey: ["leaderboard", scope],
+    staleTime: 60 * 1000, // 60 seconds cache to optimize database load
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_leaderboard",
@@ -59,6 +61,27 @@ function LeaderboardPage() {
   const list = rows.data ?? [];
   const podium = list.slice(0, 3);
 
+  async function exportLeaderboardToExcel() {
+    try {
+      const XLSX = await import("xlsx");
+      const data = list.map((p, i) => ({
+        Rank: i + 1,
+        Member: p.full_name,
+        "Events Attended": p.events,
+        "Podium Finishes": p.wins,
+        "Total Points": p.points,
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Leaderboard");
+      const titleScope = scope === "all" ? "Clubwide" : hackathons.data?.find((h) => h.id === scope)?.title || "Hackathon";
+      XLSX.writeFile(wb, `Yuga_Spark_Leaderboard_${titleScope.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`);
+      toast.success("Leaderboard exported to Excel");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -66,19 +89,25 @@ function LeaderboardPage() {
         title="Club leaderboard"
         description="Points are awarded by admins after each hackathon — attendance, placement and bonus points all count."
         actions={
-          <Select value={scope} onValueChange={setScope}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All hackathons</SelectItem>
-              {(hackathons.data ?? []).map((h) => (
-                <SelectItem key={h.id} value={h.id}>
-                  {h.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportLeaderboardToExcel} className="gap-1.5 text-xs">
+              <Download className="h-3.5 w-3.5 text-primary" />
+              Export Excel
+            </Button>
+            <Select value={scope} onValueChange={setScope}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All hackathons</SelectItem>
+                {(hackathons.data ?? []).map((h) => (
+                  <SelectItem key={h.id} value={h.id}>
+                    {h.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         }
       />
 

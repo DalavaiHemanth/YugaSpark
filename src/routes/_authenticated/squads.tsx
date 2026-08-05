@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Users, UserPlus, LogOut, Trash2, Check, X, Clock } from "lucide-react";
+import { Users, UserPlus, LogOut, Trash2, Check, X, Clock, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppShell, PageHeader, EmptyState } from "@/components/AppShell";
@@ -307,7 +307,39 @@ function SquadsPage() {
                         </ul>
                       </div>
                     ) : null}
-                    <div className="mt-5 flex gap-2">
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={async () => {
+                          const text = `Join my hackathon squad "${s.name}" for ${active.title} on Yuga Spark! Register & request to join: ${window.location.origin}/squads`;
+                          if (navigator.share) {
+                            try {
+                              await navigator.share({ title: `Squad: ${s.name}`, text, url: `${window.location.origin}/squads` });
+                              return;
+                            } catch {
+                              // fallback to clipboard
+                            }
+                          }
+                          await navigator.clipboard.writeText(text);
+                          toast.success("Squad invite text copied to clipboard!");
+                        }}
+                      >
+                        <Share2 className="h-3.5 w-3.5 text-primary" />
+                        Share Invite Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                        onClick={() => {
+                          const msg = `Join my hackathon squad "${s.name}" for ${active.title} on Yuga Spark! Join here: ${window.location.origin}/squads`;
+                          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+                        }}
+                      >
+                        WhatsApp
+                      </Button>
                       {isMember ? (
                         <>
                           <Button variant="outline" size="sm" onClick={() => leave(s.id)}>
