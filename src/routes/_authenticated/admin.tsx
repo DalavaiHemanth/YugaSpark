@@ -309,6 +309,33 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
   const [batchFilter, setBatchFilter] = useState("all");
   const [bulkBatchVal, setBulkBatchVal] = useState("");
 
+  const batchesQuery = useQuery({
+    queryKey: ["admin-members-batches"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("batches" as any)
+          .select("name, is_active")
+          .order("name", { ascending: true });
+        if (error) return [];
+        return (data ?? []) as { name: string; is_active: boolean }[];
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  const activeBatchName = batchesQuery.data?.find((b) => b.is_active)?.name || "2023-2027";
+  const batchOptions = Array.from(
+    new Set([
+      ...(batchesQuery.data?.map((b) => b.name) ?? []),
+      "2022-2026",
+      "2023-2027",
+      "2024-2028",
+      "2025-2029",
+    ]),
+  );
+
   async function exportMembersToExcel() {
     try {
       const XLSX = await import("xlsx");
@@ -335,7 +362,10 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
   }
 
   const availableBatches = Array.from(
-    new Set((members.data ?? []).map((m) => m.batch).filter(Boolean)),
+    new Set([
+      ...(members.data ?? []).map((m) => m.batch).filter(Boolean),
+      ...batchOptions,
+    ]),
   ) as string[];
 
   const visible = (() => {
@@ -563,19 +593,25 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="text-[11px]">{selectedRows.length} selected</Badge>
               
-              <div className="flex items-center gap-1">
-                <Input
-                  className="h-7 w-32 bg-background text-xs"
-                  placeholder="Batch e.g. 2023-2027"
-                  value={bulkBatchVal}
-                  onChange={(e) => setBulkBatchVal(e.target.value)}
-                />
+              <div className="flex items-center gap-1.5">
+                <Select value={bulkBatchVal || activeBatchName} onValueChange={setBulkBatchVal}>
+                  <SelectTrigger className="h-7 w-36 bg-background text-xs">
+                    <SelectValue placeholder="Select Batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batchOptions.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        Batch: {b} {b === activeBatchName ? " (Active)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   size="sm"
                   variant="secondary"
                   className="h-7 text-xs"
-                  disabled={bulkBusy || !bulkBatchVal.trim()}
-                  onClick={() => void bulkAssignBatch(bulkBatchVal)}
+                  disabled={bulkBusy}
+                  onClick={() => void bulkAssignBatch(bulkBatchVal || activeBatchName)}
                 >
                   Set Batch
                 </Button>
@@ -690,6 +726,8 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
               key={m.id}
               member={m}
               selected={selected.includes(m.id)}
+              batchOptions={batchOptions}
+              activeBatchName={activeBatchName}
               onToggle={() => toggleOne(m.id)}
               onChanged={() => void members.refetch()}
             />
@@ -724,18 +762,36 @@ type MemberRowProps = {
     resume_url: string | null;
   };
   selected: boolean;
+  batchOptions?: string[];
+  activeBatchName?: string;
   onToggle: () => void;
   onChanged: () => void;
 };
 
-function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
+function MemberRow({
+  member,
+  selected,
+  batchOptions,
+  activeBatchName,
+  onToggle,
+  onChanged,
+}: MemberRowProps) {
   const [pwd, setPwd] = useState("");
   const [open, setOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
-  const [batchVal, setBatchVal] = useState(member.batch ?? "");
+  const defaultBatch = member.batch || activeBatchName || batchOptions?.[0] || "2023-2027";
+  const [batchVal, setBatchVal] = useState(defaultBatch);
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [downloadingPhoto, setDownloadingPhoto] = useState(false);
   const [downloadingResume, setDownloadingResume] = useState(false);
+
+  useEffect(() => {
+    if (member.batch) {
+      setBatchVal(member.batch);
+    } else if (activeBatchName) {
+      setBatchVal(activeBatchName);
+    }
+  }, [member.batch, activeBatchName]);
 
   useEffect(() => {
     if (member.photo_url) {
@@ -959,12 +1015,20 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
             }
           }}
         >
-          <Input
-            type="text"
-            value={batchVal}
-            placeholder="Assign Batch (e.g. 2023-2027)"
-            onChange={(e) => setBatchVal(e.target.value)}
-          />
+          <Select value={batchVal} onValueChange={setBatchVal}>
+            <SelectTrigger className="h-9 w-full bg-background text-xs">
+              <SelectValue placeholder="Select Batch" />
+            </SelectTrigger>
+            <SelectContent>
+              {(
+                batchOptions || ["2022-2026", "2023-2027", "2024-2028", "2025-2029"]
+              ).map((b) => (
+                <SelectItem key={b} value={b}>
+                  Batch: {b} {b === activeBatchName ? " (Platform Active)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button size="sm" type="submit">
             Save Batch
           </Button>
