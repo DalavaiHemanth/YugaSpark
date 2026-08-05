@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://kfberuajgvquebizztks.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "yuga-spark-hub",
+      "version": "0.1.0",
+      "title": "Yuga Spark Hub"
+    },
+    "tools": [
+      {
+        "name": "list_hackathons",
+        "title": "List hackathons",
+        "description": "List Yuga Spark hackathons with dates, venue, mode, team sizes and registration state.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "upcoming_only": {
+              "type": "boolean",
+              "description": "Only events on or after today. Defaults to true."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_registrations",
+        "title": "My registrations",
+        "description": "List the hackathons the signed-in member is registered for.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "register_for_hackathon",
+        "title": "Register for a hackathon",
+        "description": "Register the signed-in member for a hackathon, or withdraw an existing registration.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hackathon_id": {
+              "type": "string",
+              "description": "The hackathon id from list_hackathons."
+            },
+            "withdraw": {
+              "type": "boolean",
+              "description": "Set true to withdraw instead of register."
+            }
+          },
+          "required": [
+            "hackathon_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "leaderboard",
+        "title": "Club leaderboard",
+        "description": "Club leaderboard with points, wins and events attended. Optionally scoped to one hackathon.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hackathon_id": {
+              "type": "string",
+              "description": "Scope the ranking to a single hackathon."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "How many rows to return. Defaults to 20."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_results",
+        "title": "My hackathon results",
+        "description": "Attendance, placements and points earned by the signed-in member across hackathons.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_notices",
+        "title": "Notice board",
+        "description": "Club announcements, outside hackathons, links and polls from the notice board.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_playbook_resources",
+        "title": "Playbook resources",
+        "description": "Learning resources from the Yuga Spark playbook, optionally filtered by category.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "Category to filter by."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "message_admin",
+        "title": "Message the club admins",
+        "description": "Send a doubt or question to the Yuga Spark admins from the signed-in member.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string",
+              "description": "The message to send."
+            }
+          },
+          "required": [
+            "body"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_profile",
+        "title": "My club profile",
+        "description": "The signed-in member's Yuga Spark profile: name, registration number, year and completion state.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
