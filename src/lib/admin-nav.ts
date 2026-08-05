@@ -83,10 +83,10 @@ export const ADMIN_NAV: { group: string; items: SectionMeta[] }[] = [
       },
       {
         key: "domains",
-        label: "Sender domain",
+        label: "SMTP Settings",
         icon: Globe,
-        title: "Sender domain",
-        description: "Verify the club domain and choose the From address used for club email.",
+        title: "Google SMTP Settings",
+        description: "Configure Google SMTP credentials (Gmail / App Password) and test email delivery.",
         ownerOnly: true,
       },
       {
