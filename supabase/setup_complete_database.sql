@@ -383,7 +383,15 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   ORDER BY points DESC, wins DESC;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_leaderboard(uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.get_member_names()
+RETURNS TABLE (id uuid, full_name text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT p.id, COALESCE(p.full_name, split_part(p.email, '@', 1))
+  FROM public.profiles p;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_member_names() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_member_names() TO authenticated;
 
 -- 18. Triggers
 CREATE OR REPLACE FUNCTION public.set_updated_at() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
