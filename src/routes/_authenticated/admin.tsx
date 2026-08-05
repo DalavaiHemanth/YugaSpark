@@ -12,6 +12,7 @@ import {
   adminSetPassword,
   STUDENT_DEFAULT_PASSWORD,
 } from "@/lib/club.functions";
+import { openUserFile, downloadUserFile, signedUrl } from "@/lib/storage";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import {
   Users,
@@ -32,6 +33,10 @@ import {
   MapPin,
   Upload,
   ScrollText,
+  FileText,
+  Image,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
 import { SystemChecksPanel } from "@/components/admin/SystemChecksPanel";
@@ -530,6 +535,48 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                   Assign access
                 </Button>
               ) : null}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={bulkBusy}
+                onClick={async () => {
+                  const withResumes = selectedRows.filter((m) => m.resume_url);
+                  if (withResumes.length === 0) {
+                    toast.info("None of the selected members have uploaded a resume");
+                    return;
+                  }
+                  toast.info(`Downloading ${withResumes.length} resume(s)…`);
+                  for (const m of withResumes) {
+                    const name = m.full_name || m.registration_number || m.email;
+                    await downloadUserFile("resumes", m.resume_url, name);
+                  }
+                }}
+              >
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                Download Resumes
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={bulkBusy}
+                onClick={async () => {
+                  const withPhotos = selectedRows.filter((m) => m.photo_url);
+                  if (withPhotos.length === 0) {
+                    toast.info("None of the selected members have uploaded a photo");
+                    return;
+                  }
+                  toast.info(`Downloading ${withPhotos.length} photo(s)…`);
+                  for (const m of withPhotos) {
+                    const name = m.full_name || m.registration_number || m.email;
+                    await downloadUserFile("photos", m.photo_url, name);
+                  }
+                }}
+              >
+                <Image className="h-3.5 w-3.5 text-primary" />
+                Download Photos
+              </Button>
               <button
                 type="button"
                 className="ml-auto text-xs text-muted-foreground hover:text-foreground"
@@ -605,6 +652,19 @@ type MemberRowProps = {
 function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
   const [pwd, setPwd] = useState("");
   const [open, setOpen] = useState(false);
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null);
+  const [downloadingPhoto, setDownloadingPhoto] = useState(false);
+  const [downloadingResume, setDownloadingResume] = useState(false);
+
+  useEffect(() => {
+    if (member.photo_url) {
+      void signedUrl("photos", member.photo_url).then(setPhotoSrc);
+    } else {
+      setPhotoSrc(null);
+    }
+  }, [member.photo_url]);
+
+  const displayName = member.full_name || member.registration_number || member.email;
   const initials = (member.full_name ?? member.email)
     .split(/[\s@.]+/)
     .filter(Boolean)
@@ -612,6 +672,33 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  async function handleDownload(bucket: "photos" | "resumes") {
+    const isPhoto = bucket === "photos";
+    const path = isPhoto ? member.photo_url : member.resume_url;
+    if (!path) return;
+    if (isPhoto) setDownloadingPhoto(true);
+    else setDownloadingResume(true);
+    try {
+      await downloadUserFile(bucket, path, displayName);
+      toast.success(`${isPhoto ? "Photo" : "Resume"} downloaded`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      if (isPhoto) setDownloadingPhoto(false);
+      else setDownloadingResume(false);
+    }
+  }
+
+  async function handleView(bucket: "photos" | "resumes") {
+    const path = bucket === "photos" ? member.photo_url : member.resume_url;
+    if (!path) return;
+    try {
+      await openUserFile(bucket, path);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open file");
+    }
+  }
 
   return (
     <li className="px-4 py-4 transition-colors hover:bg-secondary/30 sm:px-5">
@@ -623,9 +710,17 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
             onCheckedChange={onToggle}
             aria-label={`Select ${member.email}`}
           />
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-[11px] font-semibold text-primary">
-            {initials}
-          </span>
+          {photoSrc ? (
+            <img
+              src={photoSrc}
+              alt={displayName}
+              className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
+            />
+          ) : (
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-[11px] font-semibold text-primary">
+              {initials}
+            </span>
+          )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <p className="truncate text-sm font-medium">{member.full_name ?? "Unnamed member"}</p>
@@ -643,13 +738,62 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
               {member.registration_number ?? "no reg no."} · {member.year ?? "year not set"}
               {member.personal_email ? ` · ${member.personal_email}` : ""}
             </p>
-            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-              <span className="rounded bg-secondary px-1.5 py-0.5">
-                photo {member.photo_url ? "✓" : "—"}
-              </span>
-              <span className="rounded bg-secondary px-1.5 py-0.5">
-                resume {member.resume_url ? "✓" : "—"}
-              </span>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {member.photo_url ? (
+                <div className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-xs">
+                  <Image className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium text-foreground">Photo</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleView("photos")}
+                    className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    title="View Photo in new tab"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={downloadingPhoto}
+                    onClick={() => void handleDownload("photos")}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+                    title="Download Photo"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-secondary/30 px-2 py-0.5 text-xs text-muted-foreground">
+                  <Image className="h-3.5 w-3.5 opacity-50" /> No photo
+                </span>
+              )}
+
+              {member.resume_url ? (
+                <div className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-xs">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium text-foreground">Resume</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleView("resumes")}
+                    className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    title="View Resume in new tab"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={downloadingResume}
+                    onClick={() => void handleDownload("resumes")}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+                    title="Download Resume"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-secondary/30 px-2 py-0.5 text-xs text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5 opacity-50" /> No resume
+                </span>
+              )}
             </div>
           </div>
         </div>
