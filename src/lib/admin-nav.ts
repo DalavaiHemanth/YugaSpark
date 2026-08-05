@@ -70,10 +70,10 @@ export const ADMIN_NAV: { group: string; items: SectionMeta[] }[] = [
       },
       {
         key: "saturday_attendance",
-        label: "Saturday Tracker",
+        label: "Attendance Tracker",
         icon: CalendarCheck,
-        title: "Saturday Club Session Attendance",
-        description: "Weekly Saturday attendance tracker per batch/semester with QR scanning and Excel exports.",
+        title: "Club Session Attendance Tracker",
+        description: "Weekly session attendance tracker per batch/semester with QR scanning and Excel exports.",
       },
       {
         key: "mail",

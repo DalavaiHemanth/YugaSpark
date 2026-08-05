@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarCheck, QrCode, Download, Plus, CheckCircle2, XCircle, Search, Users, UserCheck } from "lucide-react";
+import { CalendarCheck, QrCode, Download, Plus, CheckCircle2, XCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 
 export function SaturdayAttendancePanel() {
-  const queryClient = useQueryClient();
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [batchFilter, setBatchFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,19 +26,11 @@ export function SaturdayAttendancePanel() {
 
   // New Session Form State
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(() => {
-    const today = new Date();
-    // Default to Saturday date
-    const day = today.getDay();
-    const diff = (6 - day + 7) % 7;
-    const sat = new Date(today);
-    sat.setDate(today.getDate() + diff);
-    return sat.toISOString().slice(0, 10);
-  });
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [batchSemester, setBatchSemester] = useState("All Batches");
   const [topic, setTopic] = useState("");
 
-  // 1. Fetch Saturday Sessions
+  // 1. Fetch Sessions
   const sessions = useQuery({
     queryKey: ["club-sessions"],
     queryFn: async () => {
@@ -102,7 +93,7 @@ export function SaturdayAttendancePanel() {
 
       if (error) throw new Error(error.message);
 
-      toast.success("Saturday Session created!");
+      toast.success("Session created!");
       setTitle("");
       setTopic("");
       void sessions.refetch();
@@ -166,10 +157,10 @@ export function SaturdayAttendancePanel() {
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Saturday Attendance");
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance Register");
 
       const cleanTitle = activeSession.title.replace(/[^a-zA-Z0-9_-]/g, "_");
-      XLSX.writeFile(wb, `Saturday_Attendance_${cleanTitle}_${activeSession.session_date}.xlsx`);
+      XLSX.writeFile(wb, `Attendance_${cleanTitle}_${activeSession.session_date}.xlsx`);
       toast.success("Attendance register exported to Excel!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");
@@ -199,7 +190,7 @@ export function SaturdayAttendancePanel() {
       {showQrScanner && activeSession ? (
         <QrScannerModal
           hackathonId={activeSessionId}
-          hackathonTitle={`Saturday Session: ${activeSession.title}`}
+          hackathonTitle={`Session: ${activeSession.title}`}
           onClose={() => setShowQrScanner(false)}
           onSuccess={() => void attendance.refetch()}
         />
@@ -209,10 +200,10 @@ export function SaturdayAttendancePanel() {
       <div className="surface p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <CalendarCheck className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-base font-bold">New Saturday Club Session</h2>
+          <h2 className="font-display text-base font-bold">New Session Attendance Register</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Create a new Saturday attendance register for your weekly club sessions and batch.
+          Create an attendance register for weekly club sessions, workshops, or semester batches.
         </p>
 
         <form onSubmit={handleCreateSession} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -223,12 +214,12 @@ export function SaturdayAttendancePanel() {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Saturday Session #5 - Web Bootcamp"
+              placeholder="e.g. Session #5 - Web Bootcamp"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="session-date" className="text-xs">Date (Saturday)</Label>
+            <Label htmlFor="session-date" className="text-xs">Date</Label>
             <Input
               id="session-date"
               type="date"
@@ -267,23 +258,23 @@ export function SaturdayAttendancePanel() {
           <div className="sm:col-span-2 lg:col-span-4">
             <Button type="submit" disabled={creating || !title.trim()} className="gap-2">
               <Plus className="h-4 w-4" />
-              {creating ? "Creating Session…" : "Create Saturday Session"}
+              {creating ? "Creating Session…" : "Create Attendance Register"}
             </Button>
           </div>
         </form>
       </div>
 
-      {/* Saturday Session Selector & Attendance Sheet */}
+      {/* Session Selector & Attendance Sheet */}
       <div className="surface p-4 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Saturday Session</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Session</Label>
             <Select
               value={activeSessionId}
               onValueChange={(val) => setSelectedSessionId(val)}
             >
               <SelectTrigger className="w-full sm:w-[320px]">
-                <SelectValue placeholder="Pick a Saturday session..." />
+                <SelectValue placeholder="Pick a session..." />
               </SelectTrigger>
               <SelectContent>
                 {(sessions.data ?? []).map((s) => (
@@ -431,7 +422,7 @@ export function SaturdayAttendancePanel() {
           </>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No Saturday sessions created yet. Use the form above to create your first Saturday session.
+            No sessions created yet. Use the form above to create your first session attendance register.
           </p>
         )}
       </div>
