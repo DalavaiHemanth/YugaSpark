@@ -1,7 +1,25 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Layers, Plus, CheckCircle2, Radio, Trash2, Users, RefreshCw, Sparkles, ShieldCheck } from "lucide-react";
+import {
+  Layers,
+  Plus,
+  CheckCircle2,
+  Radio,
+  Trash2,
+  Users,
+  RefreshCw,
+  Sparkles,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Download,
+  UserCheck,
+  UserX,
+  FileText,
+  Image,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +36,27 @@ export type BatchItem = {
   created_at: string;
 };
 
+type ProfileMember = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  registration_number: string | null;
+  year: string | null;
+  batch: string | null;
+  personal_email: string | null;
+  profile_completed: boolean;
+  is_active: boolean;
+  photo_url: string | null;
+  resume_url: string | null;
+};
+
 export function BatchesPanel() {
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [makeActive, setMakeActive] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [expandedBatchName, setExpandedBatchName] = useState<string | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
 
   // Fetch all batches
   const batches = useQuery({
@@ -41,39 +75,41 @@ export function BatchesPanel() {
     },
   });
 
-  // Fetch student counts per batch
-  const memberCounts = useQuery({
-    queryKey: ["batch-member-counts"],
+  // Fetch all profiles for student mapping
+  const profilesQuery = useQuery({
+    queryKey: ["all-batch-profiles"],
     queryFn: async () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("batch");
-        if (error || !data) return {} as Record<string, number>;
-        
-        const counts: Record<string, number> = {};
-        for (const p of data) {
-          if (p.batch) {
-            counts[p.batch] = (counts[p.batch] || 0) + 1;
-          }
-        }
-        return counts;
+          .select("*")
+          .order("full_name");
+        if (error) return [];
+        return (data ?? []) as ProfileMember[];
       } catch {
-        return {} as Record<string, number>;
+        return [];
       }
     },
   });
 
+  // Group members by batch
+  const membersByBatch = (profilesQuery.data ?? []).reduce((acc, member) => {
+    const b = member.batch || "Unassigned";
+    if (!acc[b]) acc[b] = [];
+    acc[b].push(member);
+    return acc;
+  }, {} as Record<string, ProfileMember[]>);
+
   // Activate single batch (deactivates all others)
   async function activateSingleBatch(targetBatch: BatchItem) {
-    if (targetBatch.is_active) return; // already active
+    if (targetBatch.is_active) return;
     setBusy(true);
     try {
       // Step 1: Deactivate all batches
       const { error: deactivateErr } = await supabase
         .from("batches" as any)
         .update({ is_active: false })
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // all rows
+        .neq("id", "00000000-0000-0000-0000-000000000000");
 
       if (deactivateErr) throw new Error(deactivateErr.message);
 
@@ -104,7 +140,6 @@ export function BatchesPanel() {
 
     setBusy(true);
     try {
-      // If setting as active, deactivate all existing batches first
       if (makeActive) {
         await supabase
           .from("batches" as any)
@@ -117,7 +152,7 @@ export function BatchesPanel() {
         .insert({
           name: cleanName,
           notes: notes.trim() || null,
-          is_active: makeActive || (batches.data?.length === 0), // default active if first batch
+          is_active: makeActive || (batches.data?.length === 0),
         });
 
       if (error) throw new Error(error.message);
@@ -156,8 +191,30 @@ export function BatchesPanel() {
     }
   }
 
+  async function exportBatchStudentsToExcel(batchName: string, students: ProfileMember[]) {
+    try {
+      const XLSX = await import("xlsx");
+      const rows = students.map((m, idx) => ({
+        "#": idx + 1,
+        "Full Name": m.full_name || "—",
+        Email: m.email,
+        "Registration Number": m.registration_number || "—",
+        Year: m.year || "—",
+        Batch: m.batch || batchName,
+        "Personal Email": m.personal_email || "—",
+        Status: !m.is_active ? "Inactive" : m.profile_completed ? "Complete" : "Pending",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Batch ${batchName}`);
+      XLSX.writeFile(wb, `Batch_${batchName.replace(/[^a-zA-Z0-9_-]/g, "_")}_Students.xlsx`);
+      toast.success(`Exported ${students.length} students from Batch ${batchName} to Excel!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   const batchList = batches.data ?? [];
-  const counts = memberCounts.data ?? {};
   const activeBatch = batchList.find((b) => b.is_active) || batchList[0];
 
   return (
@@ -183,7 +240,7 @@ export function BatchesPanel() {
               </h2>
               <p className="text-xs text-muted-foreground">
                 {activeBatch
-                  ? `${activeBatch.notes || "Current active cohort"} · ${counts[activeBatch.name] || 0} active members assigned`
+                  ? `${activeBatch.notes || "Current active cohort"} · ${(membersByBatch[activeBatch.name] || []).length} active members assigned`
                   : "Please select an active batch below."}
               </p>
             </div>
@@ -247,7 +304,7 @@ export function BatchesPanel() {
           </div>
         </div>
 
-        {/* Batches Maintenance List */}
+        {/* Batches Maintenance List & Assigned Student Roster */}
         <div className="surface overflow-hidden">
           <div className="flex items-center justify-between border-b border-border bg-secondary/30 px-5 py-4">
             <div className="flex items-center gap-2.5">
@@ -257,7 +314,7 @@ export function BatchesPanel() {
               <div>
                 <h2 className="font-display text-sm font-bold">Batches Maintenance</h2>
                 <p className="text-xs text-muted-foreground">
-                  Select which batch is currently Active across the platform
+                  View assigned students & manage active batch
                 </p>
               </div>
             </div>
@@ -268,107 +325,243 @@ export function BatchesPanel() {
                 className="h-8 gap-1.5 text-xs"
                 onClick={() => {
                   void batches.refetch();
-                  void memberCounts.refetch();
+                  void profilesQuery.refetch();
                 }}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
               <Badge variant="secondary" className="font-mono text-[11px]">
-                {batchList.length} Total
+                {batchList.length} Batches
               </Badge>
             </div>
           </div>
 
           <ul className="divide-y divide-border">
             {batchList.map((batch) => {
-              const studentCount = counts[batch.name] || 0;
+              const assignedStudents = membersByBatch[batch.name] || [];
+              const studentCount = assignedStudents.length;
               const isCurrentActive = batch.is_active;
+              const isExpanded = expandedBatchName === batch.name;
+
+              const filteredStudents = assignedStudents.filter((s) => {
+                if (!studentSearch.trim()) return true;
+                const term = studentSearch.trim().toLowerCase();
+                return [s.full_name, s.email, s.registration_number, s.year, s.personal_email]
+                  .filter(Boolean)
+                  .some((v) => String(v).toLowerCase().includes(term));
+              });
 
               return (
-                <li
-                  key={batch.id}
-                  className={`flex flex-col gap-3 p-4 transition-colors sm:flex-row sm:items-center sm:justify-between sm:px-5 ${
-                    isCurrentActive
-                      ? "bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary"
-                      : "hover:bg-secondary/20"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void activateSingleBatch(batch)}
-                      disabled={busy || isCurrentActive}
-                      className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-all ${
-                        isCurrentActive
-                          ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40"
-                          : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary"
-                      }`}
-                      title={isCurrentActive ? "Currently Active Batch" : "Click to make Active Batch"}
-                    >
-                      {isCurrentActive ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <Radio className="h-4 w-4 opacity-70" />
-                      )}
-                    </button>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-display text-base font-bold text-foreground">
-                          {batch.name}
-                        </h3>
+                <li key={batch.id} className="transition-colors">
+                  <div
+                    className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 ${
+                      isCurrentActive
+                        ? "bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary"
+                        : "hover:bg-secondary/20"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void activateSingleBatch(batch)}
+                        disabled={busy || isCurrentActive}
+                        className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-all ${
+                          isCurrentActive
+                            ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40"
+                            : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary"
+                        }`}
+                        title={isCurrentActive ? "Currently Active Batch" : "Click to make Active Batch"}
+                      >
                         {isCurrentActive ? (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] gap-1">
-                            <Sparkles className="h-3 w-3" /> ACTIVE BATCH
-                          </Badge>
+                          <CheckCircle2 className="h-5 w-5" />
                         ) : (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                            Inactive / Archived
-                          </Badge>
+                          <Radio className="h-4 w-4 opacity-70" />
                         )}
+                      </button>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-display text-base font-bold text-foreground">
+                            {batch.name}
+                          </h3>
+                          {isCurrentActive ? (
+                            <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] gap-1">
+                              <Sparkles className="h-3 w-3" /> ACTIVE BATCH
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                              Inactive / Archived
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {batch.notes || "No notes provided"}
+                        </p>
+
+                        <div className="mt-2 flex items-center gap-3 text-xs font-mono">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs gap-1.5 bg-primary/10 text-primary hover:bg-primary/20"
+                            onClick={() => {
+                              setExpandedBatchName(isExpanded ? null : batch.name);
+                              setStudentSearch("");
+                            }}
+                          >
+                            <Users className="h-3.5 w-3.5" />
+                            <strong>{studentCount}</strong> Student{studentCount === 1 ? "" : "s"} Assigned
+                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
                       </div>
+                    </div>
 
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {batch.notes || "No notes provided"}
-                      </p>
-
-                      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5 text-primary" />
-                          <strong>{studentCount}</strong> member{studentCount === 1 ? "" : "s"}
+                    <div className="flex items-center gap-2.5 self-end sm:self-center">
+                      {!isCurrentActive ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => void activateSingleBatch(batch)}
+                          className="h-8 text-xs gap-1.5"
+                        >
+                          <Radio className="h-3.5 w-3.5 text-primary" />
+                          Set Active
+                        </Button>
+                      ) : (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Platform Active
                         </span>
-                      </div>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 p-0"
+                        onClick={() => void deleteBatch(batch)}
+                        title="Delete batch"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-center">
-                    {!isCurrentActive ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => void activateSingleBatch(batch)}
-                        className="h-8 text-xs gap-1.5"
-                      >
-                        <Radio className="h-3.5 w-3.5 text-primary" />
-                        Set Active
-                      </Button>
-                    ) : (
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Platform Active
-                      </span>
-                    )}
+                  {/* Expanded Student Roster Section */}
+                  {isExpanded ? (
+                    <div className="border-t border-border bg-secondary/30 p-4 sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            Students Roster — Batch: {batch.name} ({filteredStudents.length}/{studentCount})
+                          </Badge>
+                        </div>
 
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 p-0"
-                      onClick={() => void deleteBatch(batch)}
-                      title="Delete batch"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1 sm:w-64">
+                            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              className="h-8.5 pl-8 text-xs bg-background"
+                              placeholder="Search student name, email, reg no..."
+                              value={studentSearch}
+                              onChange={(e) => setStudentSearch(e.target.value)}
+                            />
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8.5 gap-1.5 text-xs"
+                            disabled={studentCount === 0}
+                            onClick={() => void exportBatchStudentsToExcel(batch.name, assignedStudents)}
+                          >
+                            <Download className="h-3.5 w-3.5 text-primary" />
+                            Excel
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Student Table Roster */}
+                      {filteredStudents.length > 0 ? (
+                        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead className="border-b border-border bg-secondary/50 font-mono text-muted-foreground uppercase text-[10px]">
+                                <tr>
+                                  <th className="px-4 py-3">Student Name</th>
+                                  <th className="px-4 py-3">Reg. Number</th>
+                                  <th className="px-4 py-3">Year</th>
+                                  <th className="px-4 py-3">Email</th>
+                                  <th className="px-4 py-3 text-right">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {filteredStudents.map((student) => {
+                                  const initials = (student.full_name ?? student.email)
+                                    .split(/[\s@.]+/)
+                                    .filter(Boolean)
+                                    .map((p) => p[0])
+                                    .slice(0, 2)
+                                    .join("")
+                                    .toUpperCase();
+
+                                  return (
+                                    <tr key={student.id} className="hover:bg-secondary/30 transition-colors">
+                                      <td className="px-4 py-3 font-medium text-foreground">
+                                        <div className="flex items-center gap-2.5">
+                                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-[10px] font-bold text-primary">
+                                            {initials}
+                                          </span>
+                                          <div>
+                                            <p className="truncate font-semibold">{student.full_name || "Unnamed Student"}</p>
+                                            {student.personal_email ? (
+                                              <p className="truncate text-[10px] text-muted-foreground">{student.personal_email}</p>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 font-mono font-medium text-foreground">
+                                        {student.registration_number || "—"}
+                                      </td>
+                                      <td className="px-4 py-3 text-muted-foreground">
+                                        {student.year || "—"}
+                                      </td>
+                                      <td className="px-4 py-3 font-mono text-muted-foreground">
+                                        {student.email}
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          <Badge
+                                            variant={student.profile_completed ? "secondary" : "outline"}
+                                            className="text-[9px]"
+                                          >
+                                            {student.profile_completed ? "complete" : "pending"}
+                                          </Badge>
+                                          {!student.is_active ? (
+                                            <Badge variant="destructive" className="text-[9px]">
+                                              inactive
+                                            </Badge>
+                                          ) : null}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center">
+                          <p className="text-xs text-muted-foreground">
+                            {studentCount === 0
+                              ? `No students are currently assigned to Batch "${batch.name}". Assign students from the Members console.`
+                              : `No students in Batch "${batch.name}" match your search.`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
