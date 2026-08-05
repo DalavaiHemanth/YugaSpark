@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name text,
   registration_number text,
   year text,
+  batch text,
   personal_email text,
   photo_url text,
   resume_url text,

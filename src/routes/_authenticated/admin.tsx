@@ -302,6 +302,9 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     await createFromList(found);
   }
 
+  const [batchFilter, setBatchFilter] = useState("all");
+  const [bulkBatchVal, setBulkBatchVal] = useState("");
+
   async function exportMembersToExcel() {
     try {
       const XLSX = await import("xlsx");
@@ -309,6 +312,7 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
         "Full Name": m.full_name || "—",
         Email: m.email,
         "Registration Number": m.registration_number || "—",
+        Batch: m.batch || "—",
         Year: m.year || "—",
         "Personal Email": m.personal_email || "—",
         Status: !m.is_active ? "Inactive" : m.profile_completed ? "Complete" : "Pending",
@@ -326,14 +330,19 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     }
   }
 
+  const availableBatches = Array.from(
+    new Set((members.data ?? []).map((m) => m.batch).filter(Boolean)),
+  ) as string[];
+
   const visible = (() => {
     const term = q.trim().toLowerCase();
     let rows = (members.data ?? []).filter((m) => {
       if (filter === "complete" && !m.profile_completed) return false;
       if (filter === "pending" && m.profile_completed) return false;
       if (filter === "inactive" && m.is_active) return false;
+      if (batchFilter !== "all" && m.batch !== batchFilter) return false;
       if (!term) return true;
-      return [m.email, m.full_name, m.registration_number, m.year, m.personal_email]
+      return [m.email, m.full_name, m.registration_number, m.year, m.batch, m.personal_email]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
@@ -408,14 +417,6 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
         await adminSetPassword({ data: { userId: m.id, password: bulkPwd.trim() } });
         ok += 1;
       } catch {
-        failed.push(m.email);
-      }
-    }
-    setBulkBusy(false);
-    if (ok > 0) toast.success(`Password reset for ${ok} member${ok > 1 ? "s" : ""}`);
-    if (failed.length > 0) toast.error(`Failed for ${failed.length}: ${failed.slice(0, 3).join(", ")}`);
-  }
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
@@ -428,48 +429,41 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
           </div>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
             One roll number or email per line. Bare roll numbers get {DOMAIN} appended. Default
-            password{" "}
-            <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-foreground">
-              yugaspark123
-            </span>
+            password for generated accounts is{" "}
+            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">
+              {STUDENT_DEFAULT_PASSWORD}
+            </code>
+            .
           </p>
-          <Textarea
-            className="mt-3"
-            rows={6}
-            value={emails}
-            placeholder={`21091A0501\nsomeone${DOMAIN}`}
-            onChange={(e) => setEmails(e.target.value)}
-          />
-          <Button
-            className="mt-3 w-full"
-            disabled={busy}
-            onClick={() => createFromList(emails.split(/[\n,;\s]+/).map(normalize))}
-          >
-            {busy ? "Working…" : "Create accounts"}
-          </Button>
-
-          <Separator className="my-5" />
-
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Upload className="h-4 w-4" />
-            </span>
-            <h2 className="font-display text-sm font-bold">Bulk import</h2>
-          </div>
-          <Label htmlFor="sheet" className="mt-3 block text-xs font-normal text-muted-foreground">
-            Any .xlsx/.csv — only email-like cells are used.
-          </Label>
-          <Input
-            id="sheet"
-            className="mt-2"
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            disabled={busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void importSheet(f);
+          <form
+            className="mt-4 space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createFromList(emails.split("\n"));
             }}
-          />
+          >
+            <Textarea
+              rows={5}
+              value={emails}
+              placeholder={`21091a0501\n21091a0502@rgmcet.edu.in`}
+              onChange={(e) => setEmails(e.target.value)}
+            />
+            <Button type="submit" size="sm" className="w-full" disabled={busy}>
+              {busy ? "Adding members…" : "Add members"}
+            </Button>
+          </form>
+          <div className="mt-4 border-t border-border pt-4">
+            <Label className="text-xs font-semibold">Bulk import spreadsheet (.xlsx, .csv)</Label>
+            <Input
+              type="file"
+              accept=".xlsx,.csv"
+              className="mt-2 text-xs"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void importSheet(f);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -503,7 +497,7 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
           <Input
             className="bg-background"
             value={q}
-            placeholder="Search name, email, roll number, year…"
+            placeholder="Search name, email, roll number, batch, year…"
             onChange={(e) => setQ(e.target.value)}
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
@@ -522,6 +516,21 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                 </button>
               ))}
             </div>
+
+            {availableBatches.length > 0 ? (
+              <Select value={batchFilter} onValueChange={setBatchFilter}>
+                <SelectTrigger className="h-8 text-xs w-[140px] bg-background">
+                  <SelectValue placeholder="Batch Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Batches</SelectItem>
+                  {availableBatches.map((b) => (
+                    <SelectItem key={b} value={b}>Batch: {b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+
             <div className="inline-flex items-center gap-1 text-xs text-muted-foreground sm:ml-auto">
               <span>Sort</span>
               {(["recent", "name", "year"] as const).map((s) => (
@@ -542,6 +551,25 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
           <div className="space-y-3 border-b border-border bg-primary/5 px-4 py-3 sm:px-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="text-[11px]">{selectedRows.length} selected</Badge>
+              
+              <div className="flex items-center gap-1">
+                <Input
+                  className="h-7 w-32 bg-background text-xs"
+                  placeholder="Batch e.g. 2023-2027"
+                  value={bulkBatchVal}
+                  onChange={(e) => setBulkBatchVal(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-xs"
+                  disabled={bulkBusy || !bulkBatchVal.trim()}
+                  onClick={() => void bulkAssignBatch(bulkBatchVal)}
+                >
+                  Set Batch
+                </Button>
+              </div>
+
               <Button
                 size="sm"
                 variant="outline"
@@ -616,6 +644,16 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                 <Image className="h-3.5 w-3.5 text-primary" />
                 Download Photos
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={bulkBusy}
+                onClick={() => void bulkResetPasswords()}
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                Reset Passwords
+              </Button>
               <button
                 type="button"
                 className="ml-auto text-xs text-muted-foreground hover:text-foreground"
@@ -632,35 +670,25 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                 placeholder="New password"
                 onChange={(e) => setBulkPwd(e.target.value)}
               />
-              <Button
-                size="sm"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={() => void bulkResetPasswords()}
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-                {bulkBusy ? "Working…" : `Reset ${selectedRows.length} password${selectedRows.length > 1 ? "s" : ""}`}
-              </Button>
             </div>
           </div>
         ) : null}
-        <ul className="max-h-[560px] divide-y divide-border overflow-y-auto sm:max-h-[720px]">
+        <ul className="divide-y divide-border">
           {visible.map((m) => (
             <MemberRow
               key={m.id}
               member={m}
               selected={selected.includes(m.id)}
               onToggle={() => toggleOne(m.id)}
-              onChanged={() => members.refetch()}
+              onChanged={() => void members.refetch()}
             />
           ))}
           {visible.length === 0 ? (
             <li className="p-5">
               <EmptyState
-                tone="quiet"
                 icon={Users}
-                title="No members match this view"
-                description="Add members with the form on the left, or bulk import an Excel sheet of register numbers."
+                title="No members match"
+                description="Try clearing your search or adding members using the form on the left."
               />
             </li>
           ) : null}
@@ -677,6 +705,7 @@ type MemberRowProps = {
     full_name: string | null;
     registration_number: string | null;
     year: string | null;
+    batch?: string | null;
     personal_email: string | null;
     profile_completed: boolean;
     is_active: boolean;
@@ -691,6 +720,8 @@ type MemberRowProps = {
 function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
   const [pwd, setPwd] = useState("");
   const [open, setOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchVal, setBatchVal] = useState(member.batch ?? "");
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [downloadingPhoto, setDownloadingPhoto] = useState(false);
   const [downloadingResume, setDownloadingResume] = useState(false);
@@ -766,6 +797,11 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
               <Badge variant={member.profile_completed ? "secondary" : "outline"} className="text-[10px]">
                 {member.profile_completed ? "complete" : "pending"}
               </Badge>
+              {member.batch ? (
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 font-semibold">
+                  Batch: {member.batch}
+                </Badge>
+              ) : null}
               {!member.is_active ? (
                 <Badge variant="destructive" className="text-[10px]">
                   inactive
@@ -840,6 +876,15 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
           <Button
             size="sm"
             variant="ghost"
+            className="gap-1.5 text-xs text-primary"
+            onClick={() => setBatchOpen((v) => !v)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            {member.batch ? `Batch: ${member.batch}` : "Set Batch"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
             title={member.is_active ? "Deactivate member" : "Activate member"}
             className="gap-1.5 text-xs"
             onClick={async () => {
@@ -886,6 +931,34 @@ function MemberRow({ member, selected, onToggle, onChanged }: MemberRowProps) {
           </Button>
         </div>
       </div>
+      {batchOpen ? (
+        <form
+          className="mt-3 flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const { error } = await supabase
+              .from("profiles")
+              .update({ batch: batchVal.trim() || null })
+              .eq("id", member.id);
+            if (error) toast.error(error.message);
+            else {
+              setBatchOpen(false);
+              toast.success("Batch updated");
+              onChanged();
+            }
+          }}
+        >
+          <Input
+            type="text"
+            value={batchVal}
+            placeholder="Assign Batch (e.g. 2023-2027)"
+            onChange={(e) => setBatchVal(e.target.value)}
+          />
+          <Button size="sm" type="submit">
+            Save Batch
+          </Button>
+        </form>
+      ) : null}
       {open ? (
         <form
           className="mt-3 flex gap-2 rounded-lg border border-border bg-secondary/40 p-2"

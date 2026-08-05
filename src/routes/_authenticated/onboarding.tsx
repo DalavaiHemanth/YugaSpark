@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 });
 
 export const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+export const BATCHES = ["2022-2026", "2023-2027", "2024-2028", "2025-2029"];
 
 function Onboarding() {
   const { user, profile, refresh, loading } = useAuth();
@@ -39,6 +40,7 @@ function Onboarding() {
   const [fullName, setFullName] = useState("");
   const [regNo, setRegNo] = useState("");
   const [year, setYear] = useState("");
+  const [batch, setBatch] = useState("2023-2027");
   const [personalEmail, setPersonalEmail] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [resume, setResume] = useState<File | null>(null);
@@ -70,6 +72,7 @@ function Onboarding() {
           full_name: fullName.trim(),
           registration_number: regNo.trim(),
           year,
+          batch,
           personal_email: personalEmail.trim().toLowerCase(),
           photo_url: photoPath,
           resume_url: resumePath,
@@ -110,7 +113,7 @@ function Onboarding() {
               onChange={(e) => setFullName(e.target.value)}
             />
           </div>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="regNo">Registration number</Label>
               <Input
@@ -131,6 +134,21 @@ function Onboarding() {
                   {YEARS.map((y) => (
                     <SelectItem key={y} value={y}>
                       {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="batch">Batch</Label>
+              <Select value={batch} onValueChange={setBatch} required>
+                <SelectTrigger id="batch">
+                  <SelectValue placeholder="Select batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BATCHES.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -166,7 +184,7 @@ function Onboarding() {
               onChange={(e) => setResume(e.target.files?.[0] ?? null)}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !year}>
+          <Button type="submit" className="w-full" disabled={busy || !year || !batch}>
             {busy ? "Saving…" : "Save and continue"}
           </Button>
         </form>

@@ -52,12 +52,17 @@ export function SaturdayAttendancePanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, registration_number, year, is_active")
+        .select("id, full_name, email, registration_number, year, batch, is_active")
         .order("full_name");
       if (error) throw new Error(error.message);
       return data ?? [];
     },
   });
+
+  // Unique batches present in member records
+  const availableBatches = Array.from(
+    new Set((members.data ?? []).map((m) => m.batch).filter(Boolean)),
+  ) as string[];
 
   // 3. Fetch Attendance for active session
   const attendance = useQuery({
@@ -149,7 +154,8 @@ export function SaturdayAttendancePanel() {
           "Full Name": m.full_name || "—",
           Email: m.email,
           "Registration Number": m.registration_number || "—",
-          "Year / Batch": m.year || "—",
+          Batch: m.batch || "—",
+          Year: m.year || "—",
           Status: att ? "PRESENT" : "ABSENT",
           "Scan Time": att ? new Date(att.scanned_at).toLocaleTimeString() : "—",
         };
@@ -170,13 +176,14 @@ export function SaturdayAttendancePanel() {
   // Filter students by Search and Batch/Year
   const visibleStudents = (members.data ?? []).filter((m) => {
     if (!m.is_active) return false;
-    if (batchFilter !== "all" && m.year !== batchFilter) return false;
+    if (batchFilter !== "all" && m.batch !== batchFilter && m.year !== batchFilter) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
       (m.full_name ?? "").toLowerCase().includes(q) ||
       m.email.toLowerCase().includes(q) ||
       (m.registration_number ?? "").toLowerCase().includes(q) ||
+      (m.batch ?? "").toLowerCase().includes(q) ||
       (m.year ?? "").toLowerCase().includes(q)
     );
   });
@@ -230,19 +237,13 @@ export function SaturdayAttendancePanel() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="session-batch" className="text-xs">Batch / Semester</Label>
-            <Select value={batchSemester} onValueChange={setBatchSemester}>
-              <SelectTrigger id="session-batch">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Batches">All Batches</SelectItem>
-                <SelectItem value="1st Year">1st Year</SelectItem>
-                <SelectItem value="2nd Year">2nd Year</SelectItem>
-                <SelectItem value="3rd Year">3rd Year</SelectItem>
-                <SelectItem value="4th Year">4th Year</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="session-batch" className="text-xs">Target Batch</Label>
+            <Input
+              id="session-batch"
+              value={batchSemester}
+              onChange={(e) => setBatchSemester(e.target.value)}
+              placeholder="e.g. 2023-2027 or All Batches"
+            />
           </div>
 
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
@@ -347,12 +348,20 @@ export function SaturdayAttendancePanel() {
 
               <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
                 <span className="text-xs font-medium text-muted-foreground mr-1">Batch:</span>
-                {(["all", "1st Year", "2nd Year", "3rd Year", "4th Year"] as const).map((b) => (
+                <Button
+                  size="sm"
+                  variant={batchFilter === "all" ? "default" : "outline"}
+                  className="h-7 text-xs"
+                  onClick={() => setBatchFilter("all")}
+                >
+                  All Batches
+                </Button>
+                {availableBatches.map((b) => (
                   <Button
                     key={b}
                     size="sm"
                     variant={batchFilter === b ? "default" : "outline"}
-                    className="h-7 text-xs capitalize"
+                    className="h-7 text-xs"
                     onClick={() => setBatchFilter(b)}
                   >
                     {b}
@@ -369,7 +378,7 @@ export function SaturdayAttendancePanel() {
                     <th className="px-4 py-3 font-medium">#</th>
                     <th className="px-4 py-3 font-medium">Student Name</th>
                     <th className="px-4 py-3 font-medium">Registration Number</th>
-                    <th className="px-4 py-3 font-medium">Year / Batch</th>
+                    <th className="px-4 py-3 font-medium">Batch / Year</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium text-right">Action</th>
                   </tr>
@@ -387,7 +396,14 @@ export function SaturdayAttendancePanel() {
                         </td>
                         <td className="px-4 py-3 font-mono">{m.registration_number || "—"}</td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className="text-[10px]">{m.year || "Year N/A"}</Badge>
+                          <div className="flex items-center gap-1">
+                            {m.batch ? (
+                              <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                                {m.batch}
+                              </Badge>
+                            ) : null}
+                            <Badge variant="outline" className="text-[10px]">{m.year || "Year N/A"}</Badge>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           {isPresent ? (
