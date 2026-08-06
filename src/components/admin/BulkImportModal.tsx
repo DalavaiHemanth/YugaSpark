@@ -40,7 +40,8 @@ export function BulkImportModal({
   const [nameCol, setNameCol] = useState<string>("");
   const [regCol, setRegCol] = useState<string>("");
   const [yearCol, setYearCol] = useState<string>("");
-  const [batchCol, setBatchCol] = useState<string>("");
+  const [batchCol, setBatchCol] = useState<string>("none");
+  const [fallbackBatch, setFallbackBatch] = useState<string>(activeBatchName || "2023-2027");
 
   function resetState() {
     setFile(null);
@@ -50,7 +51,7 @@ export function BulkImportModal({
     setNameCol("");
     setRegCol("");
     setYearCol("");
-    setBatchCol("");
+    setBatchCol("none");
   }
 
   async function handleFileSelect(selectedFile: File) {
@@ -78,12 +79,12 @@ export function BulkImportModal({
       setRawRows(rows);
       setFile(selectedFile);
 
-      // Smart Auto-Matching logic for all 5 mandatory fields
+      // Smart Auto-Matching logic
       let matchedEmail = "";
       let matchedName = "";
       let matchedReg = "";
       let matchedYear = "";
-      let matchedBatch = "";
+      let matchedBatch = "none";
 
       for (const h of detectedHeaders) {
         const lower = h.toLowerCase().trim();
@@ -97,7 +98,7 @@ export function BulkImportModal({
           matchedReg = h;
         } else if (!matchedYear && (lower.includes("year") || lower.includes("sem") || lower.includes("class"))) {
           matchedYear = h;
-        } else if (!matchedBatch && (lower.includes("batch") || lower.includes("sec") || lower.includes("group"))) {
+        } else if (matchedBatch === "none" && (lower.includes("batch") || lower.includes("sec") || lower.includes("group"))) {
           matchedBatch = h;
         }
       }
@@ -107,7 +108,6 @@ export function BulkImportModal({
       if (!matchedName) matchedName = detectedHeaders.find(h => h.toLowerCase().includes("name")) || "";
       if (!matchedReg) matchedReg = detectedHeaders.find(h => h.toLowerCase().includes("reg") || h.toLowerCase().includes("number")) || "";
       if (!matchedYear) matchedYear = detectedHeaders.find(h => h.toLowerCase().includes("year")) || "";
-      if (!matchedBatch) matchedBatch = detectedHeaders.find(h => h.toLowerCase().includes("batch")) || "";
 
       setEmailCol(matchedEmail);
       setNameCol(matchedName);
@@ -119,8 +119,8 @@ export function BulkImportModal({
     }
   }
 
-  // Check if all mandatory mappings are selected
-  const allMappingsComplete = Boolean(emailCol && nameCol && regCol && yearCol && batchCol);
+  // Check if mandatory profile mappings (Email, Name, Reg No, Year) are selected
+  const allMappingsComplete = Boolean(emailCol && nameCol && regCol && yearCol);
 
   // Process and filter valid rows based on selected mandatory columns
   const validStudents: StudentImportItem[] = [];
@@ -132,16 +132,16 @@ export function BulkImportModal({
       const name = String(row[nameCol] ?? "").trim();
       const regNo = String(row[regCol] ?? "").trim();
       const year = String(row[yearCol] ?? "").trim();
-      const batch = String(row[batchCol] ?? "").trim();
+      const rowBatch = batchCol !== "none" ? String(row[batchCol] ?? "").trim() : "";
+      const finalBatch = rowBatch || fallbackBatch || activeBatchName || "2023-2027";
 
-      // Row is valid only if email contains valid characters (or bare roll number) and required fields are present
       if (email && email.length >= 3 && (email.includes("@") || /^[a-z0-9._-]+$/i.test(email)) && name && regNo) {
         validStudents.push({
           email: email.includes("@") ? email : `${email}@rgmcet.edu.in`,
           full_name: name,
           registration_number: regNo,
           year: year || "1st Year",
-          batch: batch || activeBatchName || "2023-2027",
+          batch: finalBatch,
         });
       } else {
         skippedCount++;
@@ -346,26 +346,35 @@ export function BulkImportModal({
                   </Select>
                 </div>
 
-                {/* 5. Batch Column */}
+                {/* 5. Batch Column (Flexible with Fallback) */}
                 <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs font-semibold flex items-center justify-between">
-                    <span>Batch Column <span className="text-destructive">*</span></span>
-                    {batchCol ? (
-                      <span className="text-[10px] text-green-600 font-medium">Mapped</span>
-                    ) : (
-                      <span className="text-[10px] text-destructive">Required</span>
-                    )}
-                  </Label>
-                  <Select value={batchCol} onValueChange={setBatchCol} disabled={busy}>
-                    <SelectTrigger className={`h-8 text-xs bg-background ${!batchCol ? "border-destructive/60" : ""}`}>
-                      <SelectValue placeholder="Select Batch Column *" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {headers.map((h) => (
-                        <SelectItem key={h} value={h}>{h}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Batch Column</Label>
+                    <span className="text-[11px] text-muted-foreground">Fallback Batch if unmapped/empty:</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={batchCol} onValueChange={setBatchCol} disabled={busy}>
+                      <SelectTrigger className="h-8 text-xs bg-background flex-1">
+                        <SelectValue placeholder="Select Batch Column" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Use Fallback Batch for All —</SelectItem>
+                        {headers.map((h) => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={fallbackBatch} onValueChange={setFallbackBatch} disabled={busy}>
+                      <SelectTrigger className="h-8 text-xs w-36 bg-background font-medium">
+                        <SelectValue placeholder="Fallback Batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {batchOptions.map((b) => (
+                          <SelectItem key={b} value={b}>{b}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
