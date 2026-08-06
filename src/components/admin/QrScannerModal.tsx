@@ -42,6 +42,41 @@ function QrScannerModalInner({
   const scannerInstanceRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+function triggerScanFeedback() {
+  // 1. Haptic Vibration (for mobile devices)
+  if (typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator) {
+    try {
+      navigator.vibrate([100, 50, 100]);
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. High-tech Audio Beep via Web Audio API
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.12);
+
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+  } catch {
+    // ignore
+  }
+}
+
   async function lookupUser(term: string) {
     let searchKey = term.trim();
     if (!searchKey) return;
@@ -80,6 +115,7 @@ function QrScannerModalInner({
       }
 
       setStudent(data);
+      triggerScanFeedback();
       toast.success(`Student found: ${data.full_name || data.email}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
@@ -195,6 +231,7 @@ function QrScannerModalInner({
         if (error) throw new Error(error.message);
       }
 
+      triggerScanFeedback();
       toast.success(`Attendance marked for ${student.full_name || student.email} (+10 pts)`);
       setStudent(null);
       if (onSuccess) onSuccess();
