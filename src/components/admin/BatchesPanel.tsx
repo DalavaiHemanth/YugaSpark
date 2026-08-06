@@ -92,8 +92,28 @@ export function BatchesPanel() {
     },
   });
 
-  // Group members by batch
-  const membersByBatch = (profilesQuery.data ?? []).reduce((acc, member) => {
+  // Fetch Admin user IDs to exclude admins from student batch rosters
+  const adminUsersQuery = useQuery({
+    queryKey: ["batches-admin-user-ids"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+        return new Set((data ?? []).map((r) => r.user_id));
+      } catch {
+        return new Set<string>();
+      }
+    },
+  });
+
+  // Group student members by batch (excluding Admin accounts)
+  const studentProfiles = (profilesQuery.data ?? []).filter(
+    (m) => !adminUsersQuery.data?.has(m.id)
+  );
+
+  const membersByBatch = studentProfiles.reduce((acc, member) => {
     const b = member.batch || "Unassigned";
     if (!acc[b]) acc[b] = [];
     acc[b].push(member);

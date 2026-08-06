@@ -93,6 +93,22 @@ export function SaturdayAttendancePanel() {
     },
   });
 
+  // 2b. Fetch Admin User IDs to exclude admins from student attendance sheet
+  const adminUsersQuery = useQuery({
+    queryKey: ["saturday-admin-user-ids"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+        return new Set((data ?? []).map((r) => r.user_id));
+      } catch {
+        return new Set<string>();
+      }
+    },
+  });
+
   // Unique batches present in member records
   const availableBatches = Array.from(
     new Set((members.data ?? []).map((m) => m.batch).filter(Boolean)),
@@ -211,10 +227,22 @@ export function SaturdayAttendancePanel() {
     }
   }
 
-  // Filter students by Search and Batch/Year
+  // Filter students by Admin role, Target Batch, and Search
   const visibleStudents = (members.data ?? []).filter((m) => {
+    // Exclude inactive members
     if (!m.is_active) return false;
-    if (batchFilter !== "all" && m.batch !== batchFilter && m.year !== batchFilter) return false;
+
+    // Exclude Admin accounts from student attendance registers
+    if (adminUsersQuery.data?.has(m.id)) return false;
+
+    // Enforce target batch of current active session (if specified and not "All Batches")
+    const targetBatch = activeSession?.batch_semester;
+    if (targetBatch && targetBatch !== "All Batches" && batchFilter === "all") {
+      if (m.batch !== targetBatch) return false;
+    } else if (batchFilter !== "all" && m.batch !== batchFilter && m.year !== batchFilter) {
+      return false;
+    }
+
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
