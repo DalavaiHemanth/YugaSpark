@@ -39,7 +39,7 @@ export const ensureAdminAccounts = createServerFn({ method: "POST" }).handler(as
 
 /** Allows Super Admins to promote or demote Admin roles. */
 export const adminSetRole = createServerFn({ method: "POST" })
-  .inputValidator((data: { userId: string; role: "admin" | "super_admin"; action: "add" | "remove" }) => data)
+  .validator((data: { userId: string; role: "admin" | "super_admin"; action: "add" | "remove" }) => data)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const authUser = await requireSupabaseAuth(context);
@@ -90,7 +90,7 @@ export const adminSetRole = createServerFn({ method: "POST" })
 
 /** Tells the sign-up screen whether this email may create an account. */
 export const canSignUp = createServerFn({ method: "POST" })
-  .inputValidator((data: { email: string }) => ({ email: String(data.email).trim().toLowerCase() }))
+  .validator((data: { email: string }) => ({ email: String(data.email).trim().toLowerCase() }))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: setting } = await supabaseAdmin
@@ -119,7 +119,7 @@ async function assertAdmin(context: { supabase: unknown; userId: string }) {
 /** Admin: create student accounts from a list of emails. */
 export const adminCreateStudents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { emails: string[] }) => ({
+  .validator((data: { emails: string[] }) => ({
     emails: (data.emails ?? []).map((e) => String(e).trim().toLowerCase()).filter(Boolean),
   }))
   .handler(async ({ data, context }) => {
@@ -153,7 +153,7 @@ export const adminCreateStudents = createServerFn({ method: "POST" })
 /** Admin: set another member's password. */
 export const adminSetPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { userId: string; password: string }) => {
+  .validator((data: { userId: string; password: string }) => {
     const password = String(data.password);
     if (password.length < 6) throw new Error("Password must be at least 6 characters");
     return { userId: String(data.userId), password };
@@ -184,7 +184,7 @@ export const adminSetPassword = createServerFn({ method: "POST" })
 /** Admin: remove a member entirely. */
 export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { userId: string }) => ({ userId: String(data.userId) }))
+  .validator((data: { userId: string }) => ({ userId: String(data.userId) }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (data.userId === context.userId) throw new Error("You cannot delete your own account");
