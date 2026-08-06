@@ -136,8 +136,9 @@ export function BulkImportModal({
       const finalBatch = rowBatch || fallbackBatch || activeBatchName || "2023-2027";
 
       if (email && email.length >= 3 && (email.includes("@") || /^[a-z0-9._-]+$/i.test(email)) && name && regNo) {
+        const cleanEmail = email.trim().toLowerCase();
         validStudents.push({
-          email: email.includes("@") ? email : `${email}@rgmcet.edu.in`,
+          email: cleanEmail.includes("@") ? cleanEmail : `${cleanEmail}@rgmcet.edu.in`,
           full_name: name,
           registration_number: regNo,
           year: year || "1st Year",
