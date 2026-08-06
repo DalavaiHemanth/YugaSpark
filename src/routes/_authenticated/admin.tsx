@@ -780,8 +780,13 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
               selected={selected.includes(m.id)}
               batchOptions={batchOptions}
               activeBatchName={activeBatchName}
+              roleType={getMemberRole(m)}
+              callerIsSuperAdmin={callerIsSuperAdmin}
               onToggle={() => toggleOne(m.id)}
-              onChanged={() => void members.refetch()}
+              onChanged={() => {
+                void members.refetch();
+                void allUserRolesQuery.refetch();
+              }}
             />
           ))}
           {visible.length === 0 ? (
