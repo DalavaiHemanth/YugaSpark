@@ -39,15 +39,15 @@ export const ensureAdminAccounts = createServerFn({ method: "POST" }).handler(as
 
 /** Allows Super Admins to promote or demote Admin roles. */
 export const adminSetRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((data: { userId: string; role: "admin" | "super_admin"; action: "add" | "remove" }) => data)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const authUser = await requireSupabaseAuth(context);
 
     const { data: leadProfile } = await supabaseAdmin
       .from("profiles")
       .select("email")
-      .eq("id", authUser.id)
+      .eq("id", context.userId)
       .maybeSingle();
 
     const isLead = Boolean(leadProfile?.email && ADMIN_EMAILS.includes(leadProfile.email.toLowerCase()));
@@ -55,7 +55,7 @@ export const adminSetRole = createServerFn({ method: "POST" })
     const { data: superRole } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", authUser.id)
+      .eq("user_id", context.userId)
       .eq("role", "super_admin")
       .maybeSingle();
 
