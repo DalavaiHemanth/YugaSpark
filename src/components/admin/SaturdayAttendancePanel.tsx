@@ -227,6 +227,109 @@ export function SaturdayAttendancePanel() {
     }
   }
 
+  async function exportMasterCumulativeAttendanceExcel() {
+    try {
+      const XLSX = await import("xlsx");
+      toast.info("Generating Master Cumulative Attendance Report…");
+
+      const { data: allSessionsData, error: sessError } = await supabase
+        .from("club_sessions" as any)
+        .select("id, title, session_date, batch_semester")
+        .order("session_date", { ascending: true });
+
+      if (sessError) throw new Error(sessError.message);
+
+      const allSessions = (allSessionsData ?? []) as Array<{
+        id: string;
+        title: string;
+        session_date: string;
+        batch_semester: string;
+      }>;
+
+      if (!allSessions.length) {
+        toast.error("No Saturday sessions found to export");
+        return;
+      }
+
+      const { data: allAttendanceData, error: attError } = await supabase
+        .from("session_attendance" as any)
+        .select("session_id, user_id, status");
+
+      if (attError) throw new Error(attError.message);
+
+      const attendanceRecords = (allAttendanceData ?? []) as Array<{
+        session_id: string;
+        user_id: string;
+        status: string;
+      }>;
+
+      const presentSet = new Set(
+        attendanceRecords
+          .filter((a) => a.status === "present")
+          .map((a) => `${a.user_id}_${a.session_id}`)
+      );
+
+      const studentList = (members.data ?? []).filter((m) => {
+        if (!m.is_active) return false;
+        if (adminUsersQuery.data?.has(m.id)) return false;
+        return true;
+      });
+
+      const rows = studentList.map((m, idx) => {
+        const baseRow: Record<string, unknown> = {
+          "#": idx + 1,
+          "Registration Number": m.registration_number || "—",
+          "Full Name": m.full_name || "—",
+          Email: m.email,
+          Batch: m.batch || "—",
+          Year: m.year || "—",
+        };
+
+        let attendedCount = 0;
+
+        for (const sess of allSessions) {
+          const key = `${m.id}_${sess.id}`;
+          const isPresent = presentSet.has(key);
+          const colHeader = `${sess.session_date} (${sess.title})`;
+          baseRow[colHeader] = isPresent ? "P" : "A";
+          if (isPresent) attendedCount++;
+        }
+
+        const totalSessions = allSessions.length;
+        const pct = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : 0;
+
+        baseRow["Total Attended"] = attendedCount;
+        baseRow["Total Sessions"] = totalSessions;
+        baseRow["Attendance %"] = `${pct}%`;
+
+        return baseRow;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      ws["!cols"] = [
+        { wch: 5 },
+        { wch: 18 },
+        { wch: 25 },
+        { wch: 28 },
+        { wch: 12 },
+        { wch: 10 },
+        ...allSessions.map(() => ({ wch: 22 })),
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Master All-Weeks Tracker");
+      XLSX.writeFile(wb, "Yuga_Spark_Master_All_Weeks_Attendance.xlsx");
+
+      toast.success("Master All-Weeks Attendance Tracker exported to Excel!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   // Filter students by Admin role, Target Batch, and Search
   const visibleStudents = (members.data ?? []).filter((m) => {
     // Exclude inactive members
@@ -377,9 +480,18 @@ export function SaturdayAttendancePanel() {
                 <QrCode className="h-4 w-4" />
                 Scan Badge QR
               </Button>
+              <Button
+                variant="outline"
+                onClick={exportMasterCumulativeAttendanceExcel}
+                className="gap-1.5 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+                title="Download single master CSV/Excel containing attendance for all weeks"
+              >
+                <Download className="h-4 w-4" />
+                Export Master All-Weeks CSV/Excel
+              </Button>
               <Button variant="outline" onClick={exportAttendanceExcel} className="gap-1.5 text-xs">
-                <Download className="h-4 w-4 text-primary" />
-                Export Register (.xlsx)
+                <Download className="h-4 w-4" />
+                Export Session Register
               </Button>
             </div>
           ) : null}
