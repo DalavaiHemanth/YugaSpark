@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { QrCode, UserCheck, X, Search, CameraOff } from "lucide-react";
+import { QrCode, UserCheck, X, Search, CameraOff, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,60 @@ type FoundStudent = {
   photo_url: string | null;
 };
 
-export function QrScannerModal({
+// React Error Boundary to catch any camera scanner DOM errors without crashing the app
+class QrErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.warn("QR Scanner Error Boundary caught error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+export function QrScannerModal(props: QrScannerModalProps) {
+  const fallbackUI = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+      <div className="surface relative w-full max-w-lg overflow-hidden p-6 shadow-2xl space-y-4">
+        <button
+          onClick={props.onClose}
+          className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <div className="flex items-center gap-2 text-primary font-display font-bold">
+          <QrCode className="h-5 w-5" />
+          <span>QR Check-in (Manual Mode)</span>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-6 text-center text-xs text-muted-foreground space-y-2">
+          <CameraOff className="mx-auto h-8 w-8 text-muted-foreground opacity-60" />
+          <p className="font-semibold text-foreground">Camera Feed Unavailable</p>
+          <p>Please enter the student Roll Number / Email manually below.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <QrErrorBoundary fallback={fallbackUI}>
+      <QrScannerModalInner {...props} />
+    </QrErrorBoundary>
+  );
+}
+
+function QrScannerModalInner({
   hackathonId,
   hackathonTitle,
   onClose,
@@ -33,7 +86,8 @@ export function QrScannerModal({
   const [busy, setBusy] = useState(false);
   const [marking, setMarking] = useState(false);
   const [cameraError, setCameraError] = useState(false);
-  const scannerRef = useRef<any>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const scannerInstanceRef = useRef<any>(null);
 
   async function lookupUser(term: string) {
     let searchKey = term.trim();
@@ -83,52 +137,62 @@ export function QrScannerModal({
 
   useEffect(() => {
     let isMounted = true;
-    let timer: any = null;
+    let html5QrCode: any = null;
 
-    async function initScanner() {
+    async function startCamera() {
       if (typeof window === "undefined") return;
       try {
-        const container = document.getElementById("qr-reader");
-        if (!container) {
-          if (isMounted) timer = setTimeout(initScanner, 100);
-          return;
-        }
+        const el = document.getElementById("qr-reader");
+        if (!el) return;
 
-        const { Html5QrcodeScanner } = await import("html5-qrcode");
+        const { Html5Qrcode } = await import("html5-qrcode");
         if (!isMounted) return;
 
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false,
-        );
+        html5QrCode = new Html5Qrcode("qr-reader");
+        scannerInstanceRef.current = html5QrCode;
 
-        scanner.render(
-          (decodedText) => {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText: string) => {
             if (isMounted) void lookupUser(decodedText);
           },
-          (err) => {
-            // Scanner error / frame search - ignore non-fatal
-          },
+          () => {
+            // frame scanning notice
+          }
         );
 
-        scannerRef.current = scanner;
+        if (isMounted) {
+          setCameraActive(true);
+          setCameraError(false);
+        }
       } catch (err) {
-        console.warn("QR Scanner initialization notice:", err);
-        if (isMounted) setCameraError(true);
+        console.warn("Could not start camera feed:", err);
+        if (isMounted) {
+          setCameraError(true);
+          setCameraActive(false);
+        }
       }
     }
 
-    timer = setTimeout(initScanner, 150);
+    const timer = setTimeout(() => {
+      void startCamera();
+    }, 200);
 
     return () => {
       isMounted = false;
-      if (timer) clearTimeout(timer);
-      if (scannerRef.current) {
+      clearTimeout(timer);
+      if (scannerInstanceRef.current) {
         try {
-          scannerRef.current.clear().catch(() => undefined);
+          const scanner = scannerInstanceRef.current;
+          scannerInstanceRef.current = null;
+          if (scanner.isScanning) {
+            scanner.stop().then(() => scanner.clear()).catch(() => undefined);
+          } else {
+            scanner.clear().catch(() => undefined);
+          }
         } catch {
-          // ignore clear error
+          // ignore cleanup error
         }
       }
     };
@@ -189,17 +253,17 @@ export function QrScannerModal({
           Event / Session: <strong className="text-foreground">{hackathonTitle}</strong>
         </p>
 
-        {/* Camera Scanner Viewport */}
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/40 p-2 min-h-[260px] flex items-center justify-center">
+        {/* Camera Scanner Container */}
+        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-black/40 p-2 min-h-[240px] flex items-center justify-center relative">
+          <div id="qr-reader" className="w-full text-center" />
+
           {cameraError ? (
             <div className="p-6 text-center text-xs text-muted-foreground space-y-2">
               <CameraOff className="mx-auto h-8 w-8 text-muted-foreground opacity-60" />
-              <p className="font-semibold text-foreground">Camera Feed Unavailable</p>
-              <p>Please use manual Roll Number / Email lookup below to mark attendance.</p>
+              <p className="font-semibold text-foreground">Camera Stream Unavailable</p>
+              <p>Camera permission denied or camera not found on this device. Use manual lookup below.</p>
             </div>
-          ) : (
-            <div id="qr-reader" className="w-full text-center" />
-          )}
+          ) : null}
         </div>
 
         {/* Manual Roll Number / Email Search input */}
