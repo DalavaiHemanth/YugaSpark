@@ -26,12 +26,67 @@ export const ensureAdminAccounts = createServerFn({ method: "POST" }).handler(as
     }
     if (!userId) continue;
     await supabaseAdmin.from("user_roles").upsert(
+      { user_id: userId, role: "super_admin" },
+      { onConflict: "user_id,role", ignoreDuplicates: true },
+    );
+    await supabaseAdmin.from("user_roles").upsert(
       { user_id: userId, role: "admin" },
       { onConflict: "user_id,role", ignoreDuplicates: true },
     );
   }
   return { ok: true };
 });
+
+/** Allows Super Admins to promote or demote Admin roles. */
+export const adminSetRole = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; role: "admin" | "super_admin"; action: "add" | "remove" }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const authUser = await requireSupabaseAuth(context);
+
+    const { data: leadProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    const isLead = Boolean(leadProfile?.email && ADMIN_EMAILS.includes(leadProfile.email.toLowerCase()));
+
+    const { data: superRole } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authUser.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+
+    if (!isLead && !superRole) {
+      throw new Error("Only Super Admins can manage Admin roles.");
+    }
+
+    if (data.action === "add") {
+      await supabaseAdmin.from("user_roles").upsert(
+        { user_id: data.userId, role: data.role },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
+    } else {
+      const { data: targetProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .eq("id", data.userId)
+        .maybeSingle();
+      if (targetProfile?.email && ADMIN_EMAILS.includes(targetProfile.email.toLowerCase())) {
+        throw new Error("Permanent Super Admins cannot be demoted.");
+      }
+
+      await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("role", data.role);
+    }
+
+    return { ok: true };
+  });
 
 /** Tells the sign-up screen whether this email may create an account. */
 export const canSignUp = createServerFn({ method: "POST" })

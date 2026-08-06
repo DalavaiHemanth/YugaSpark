@@ -20,6 +20,7 @@ type AuthState = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  isSuperAdmin: boolean;
   isAdmin: boolean;
   isOwner: boolean;
   refresh: () => Promise<void>;
@@ -28,9 +29,12 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const PERMANENT_SUPER_ADMIN_EMAILS = ["jayakrushna1622@gmail.com", "hemanthleads@gmail.com"];
+
 // In-memory auth cache with 5-minute TTL to prevent duplicate DB hits under 50-60 user load
 let cachedUid: string | null = null;
 let cachedProfile: Profile | null = null;
+let cachedIsSuperAdmin = false;
 let cachedIsAdmin = false;
 let cachedIsOwner = false;
 let lastFetchedAt = 0;
@@ -39,6 +43,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,10 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const load = async (uid: string | undefined, forceRefresh = false) => {
     if (!uid) {
       setProfile(null);
+      setIsSuperAdmin(false);
       setIsAdmin(false);
       setIsOwner(false);
       cachedUid = null;
       cachedProfile = null;
+      cachedIsSuperAdmin = false;
       cachedIsAdmin = false;
       cachedIsOwner = false;
       lastFetchedAt = 0;
@@ -59,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const now = Date.now();
     if (!forceRefresh && cachedUid === uid && now - lastFetchedAt < CACHE_TTL_MS) {
       setProfile(cachedProfile);
+      setIsSuperAdmin(cachedIsSuperAdmin);
       setIsAdmin(cachedIsAdmin);
       setIsOwner(cachedIsOwner);
       return;
@@ -71,16 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
 
     const nextProfile = (p as Profile) ?? null;
-    const nextAdmin = Boolean(roles?.some((r) => r.role === "admin"));
+    const roleList = (roles ?? []).map((r) => String(r.role));
+    const isLeadEmail = Boolean(nextProfile?.email && PERMANENT_SUPER_ADMIN_EMAILS.includes(nextProfile.email.toLowerCase()));
+
+    const nextSuperAdmin = isLeadEmail || roleList.includes("super_admin");
+    const nextAdmin = nextSuperAdmin || roleList.includes("admin");
     const nextOwner = Boolean(owner);
 
     cachedUid = uid;
     cachedProfile = nextProfile;
+    cachedIsSuperAdmin = nextSuperAdmin;
     cachedIsAdmin = nextAdmin;
     cachedIsOwner = nextOwner;
     lastFetchedAt = Date.now();
 
     setProfile(nextProfile);
+    setIsSuperAdmin(nextSuperAdmin);
     setIsAdmin(nextAdmin);
     setIsOwner(nextOwner);
   };
@@ -109,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     user: session?.user ?? null,
     profile,
+    isSuperAdmin,
     isAdmin,
     isOwner,
     refresh: async () => {

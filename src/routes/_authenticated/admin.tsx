@@ -10,6 +10,7 @@ import {
   adminCreateStudents,
   adminDeleteUser,
   adminSetPassword,
+  adminSetRole,
   STUDENT_DEFAULT_PASSWORD,
 } from "@/lib/club.functions";
 import { openUserFile, downloadUserFile, signedUrl } from "@/lib/storage";
@@ -37,6 +38,10 @@ import {
   Image,
   Download,
   ExternalLink,
+  Crown,
+  ShieldPlus,
+  ShieldMinus,
+  ShieldCheck,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
@@ -306,8 +311,41 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     await createFromList(found);
   }
 
+  const { isSuperAdmin: callerIsSuperAdmin } = useAuth();
   const [batchFilter, setBatchFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "student" | "admin" | "super_admin">("all");
   const [bulkBatchVal, setBulkBatchVal] = useState("");
+
+  const allUserRolesQuery = useQuery({
+    queryKey: ["all-user-roles-map"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("user_id, role");
+        if (error) return new Map<string, Set<string>>();
+        const map = new Map<string, Set<string>>();
+        for (const row of data ?? []) {
+          if (!map.has(row.user_id)) map.set(row.user_id, new Set());
+          map.get(row.user_id)!.add(String(row.role));
+        }
+        return map;
+      } catch {
+        return new Map<string, Set<string>>();
+      }
+    },
+  });
+
+  const rolesMap = allUserRolesQuery.data ?? new Map<string, Set<string>>();
+  const PERMANENT_SUPER_ADMIN_EMAILS = ["jayakrushna1622@gmail.com", "hemanthleads@gmail.com"];
+
+  function getMemberRole(m: { id: string; email: string }) {
+    const isLead = PERMANENT_SUPER_ADMIN_EMAILS.includes((m.email || "").toLowerCase());
+    const uRoles = rolesMap.get(m.id);
+    if (isLead || uRoles?.has("super_admin")) return "super_admin";
+    if (uRoles?.has("admin")) return "admin";
+    return "student";
+  }
 
   const batchesQuery = useQuery({
     queryKey: ["admin-members-batches"],
@@ -339,18 +377,19 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
   async function exportMembersToExcel() {
     try {
       const XLSX = await import("xlsx");
-      const rows = (members.data ?? []).map((m) => ({
-        "Full Name": m.full_name || "—",
-        Email: m.email,
-        "Registration Number": m.registration_number || "—",
-        Batch: m.batch || "—",
-        Year: m.year || "—",
-        "Personal Email": m.personal_email || "—",
-        Status: !m.is_active ? "Inactive" : m.profile_completed ? "Complete" : "Pending",
-        "Profile Completed": m.profile_completed ? "Yes" : "No",
-        "Has Photo": m.photo_url ? "Yes" : "No",
-        "Has Resume": m.resume_url ? "Yes" : "No",
-      }));
+      const rows = (members.data ?? []).map((m) => {
+        const mRole = getMemberRole(m);
+        return {
+          "Full Name": m.full_name || "—",
+          Email: m.email,
+          "Registration Number": m.registration_number || "—",
+          Role: mRole === "super_admin" ? "Super Admin" : mRole === "admin" ? "Admin" : "Student",
+          Batch: m.batch || "—",
+          Year: m.year || "—",
+          "Personal Email": m.personal_email || "—",
+          Status: !m.is_active ? "Inactive" : m.profile_completed ? "Complete" : "Pending",
+        };
+      });
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Members");
@@ -375,6 +414,10 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
       if (filter === "pending" && m.profile_completed) return false;
       if (filter === "inactive" && m.is_active) return false;
       if (batchFilter !== "all" && m.batch !== batchFilter) return false;
+
+      const mRole = getMemberRole(m);
+      if (roleFilter !== "all" && mRole !== roleFilter) return false;
+
       if (!term) return true;
       return [m.email, m.full_name, m.registration_number, m.year, m.batch, m.personal_email]
         .filter(Boolean)
@@ -572,6 +615,18 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
               </Select>
             ) : null}
 
+            <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val)}>
+              <SelectTrigger className="h-8 text-xs w-[140px] bg-background font-medium">
+                <SelectValue placeholder="Role Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="student">🎓 Students</SelectItem>
+                <SelectItem value="admin">🛡️ Admins</SelectItem>
+                <SelectItem value="super_admin">👑 Super Admins</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="inline-flex items-center gap-1 text-xs text-muted-foreground sm:ml-auto">
               <span>Sort</span>
               {(["recent", "name", "year"] as const).map((s) => (
@@ -617,44 +672,6 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                 </Button>
               </div>
 
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={() => void bulkSetActive(true)}
-              >
-                <UserCheck className="h-3.5 w-3.5" />
-                Activate
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={() => void bulkSetActive(false)}
-              >
-                <UserX className="h-3.5 w-3.5" />
-                Deactivate
-              </Button>
-              {isOwner ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-xs"
-                  disabled={bulkBusy}
-                  onClick={() => void bulkGrantAccess()}
-                >
-                  <Lock className="h-3.5 w-3.5" />
-                  Assign access
-                </Button>
-              ) : null}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={async () => {
                   const withResumes = selectedRows.filter((m) => m.resume_url);
                   if (withResumes.length === 0) {
                     toast.info("None of the selected members have uploaded a resume");
@@ -764,6 +781,8 @@ type MemberRowProps = {
   selected: boolean;
   batchOptions?: string[];
   activeBatchName?: string;
+  roleType: "super_admin" | "admin" | "student";
+  callerIsSuperAdmin: boolean;
   onToggle: () => void;
   onChanged: () => void;
 };
@@ -773,6 +792,8 @@ function MemberRow({
   selected,
   batchOptions,
   activeBatchName,
+  roleType,
+  callerIsSuperAdmin,
   onToggle,
   onChanged,
 }: MemberRowProps) {
@@ -861,6 +882,21 @@ function MemberRow({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <p className="truncate text-sm font-medium">{member.full_name ?? "Unnamed member"}</p>
+
+              {roleType === "super_admin" ? (
+                <Badge className="bg-amber-600 hover:bg-amber-700 text-white text-[10px] gap-1 font-semibold">
+                  <Crown className="h-3 w-3" /> Super Admin
+                </Badge>
+              ) : roleType === "admin" ? (
+                <Badge className="bg-primary text-primary-foreground text-[10px] gap-1 font-semibold">
+                  <ShieldCheck className="h-3 w-3" /> Admin
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground font-medium">
+                  🎓 Student
+                </Badge>
+              )}
+
               <Badge variant={member.profile_completed ? "secondary" : "outline"} className="text-[10px]">
                 {member.profile_completed ? "complete" : "pending"}
               </Badge>
@@ -969,33 +1005,81 @@ function MemberRow({
             {member.is_active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
             {member.is_active ? "Deactivate" : "Activate"}
           </Button>
+          {callerIsSuperAdmin ? (
+            roleType === "student" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium"
+                onClick={async () => {
+                  try {
+                    await adminSetRole({ data: { userId: member.id, role: "admin", action: "add" } });
+                    toast.success(`Promoted ${member.email} to Admin`);
+                    onChanged();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Role update failed");
+                  }
+                }}
+              >
+                <ShieldPlus className="h-3.5 w-3.5" />
+                Make Admin
+              </Button>
+            ) : roleType === "admin" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-1.5 text-xs text-amber-600 hover:bg-amber-500/10 font-medium"
+                onClick={async () => {
+                  if (!confirm(`Demote ${member.email} from Admin back to Student?`)) return;
+                  try {
+                    await adminSetRole({ data: { userId: member.id, role: "admin", action: "remove" } });
+                    toast.success(`Demoted ${member.email} to Student`);
+                    onChanged();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Role update failed");
+                  }
+                }}
+              >
+                <ShieldMinus className="h-3.5 w-3.5" />
+                Remove Admin
+              </Button>
+            ) : null
+          ) : null}
+
           <Button
             size="sm"
             variant="ghost"
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs font-medium"
             onClick={() => setOpen((v) => !v)}
           >
             <KeyRound className="h-3.5 w-3.5" />
             Password
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            aria-label="Delete member"
-            onClick={async () => {
-              if (!confirm(`Delete ${member.email}? This cannot be undone.`)) return;
-              try {
-                await adminDeleteUser({ data: { userId: member.id } });
-                toast.success("Member removed");
-                onChanged();
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Delete failed");
-              }
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+
+          {roleType !== "super_admin" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Delete member"
+              onClick={async () => {
+                if (!confirm(`Delete ${member.email}? This cannot be undone.`)) return;
+                try {
+                  await adminDeleteUser({ data: { userId: member.id } });
+                  toast.success("Member removed");
+                  onChanged();
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Delete failed");
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-amber-600 dark:text-amber-400 px-2 py-1 bg-amber-500/10 rounded-md">
+              <Lock className="h-3 w-3" /> Permanent
+            </span>
+          )}
         </div>
       </div>
       {batchOpen ? (
