@@ -65,7 +65,7 @@ async function senderConfigured() {
 
 type MailResult = { sent: number; failed: number; skipped?: string } | null;
 
-/** Emails every active member with a completed profile. Silently skips when no sender is set. */
+/** Emails active members belonging to the active batch (excluding Admin accounts). */
 export async function emailAllMembers(args: {
   subject: string;
   body: string;
@@ -73,18 +73,52 @@ export async function emailAllMembers(args: {
   hackathonId?: string | null;
 }): Promise<MailResult> {
   if (!(await senderConfigured())) return { sent: 0, failed: 0, skipped: "no_sender" };
-  const { data, error } = await supabase
+
+  // 1. Get active batch name
+  const { data: activeBatch } = await supabase
+    .from("batches" as any)
+    .select("name")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const activeBatchName = (activeBatch as { name: string } | null)?.name ?? null;
+
+  // 2. Query profiles
+  let query = supabase
     .from("profiles")
-    .select("email,full_name")
+    .select("id, email, full_name, batch, is_active")
     .eq("is_active", true);
-  if (error || !data?.length) return null;
+
+  if (activeBatchName) {
+    query = query.eq("batch", activeBatchName);
+  }
+
+  const [{ data: members, error }, { data: roles }] = await Promise.all([
+    query,
+    supabase.from("user_roles").select("user_id, role"),
+  ]);
+
+  if (error || !members?.length) return null;
+
+  const adminIds = new Set(
+    (roles ?? [])
+      .filter((r) => String(r.role) === "admin" || String(r.role) === "super_admin")
+      .map((r) => r.user_id)
+  );
+
+  const recipients = members
+    .filter((p) => !adminIds.has(p.id))
+    .map((p) => ({ email: p.email, name: p.full_name }));
+
+  if (recipients.length === 0) return null;
+
   return sendClubEmail({
     data: {
       subject: args.subject,
       body: args.body,
       kind: args.kind,
       hackathonId: args.hackathonId ?? null,
-      recipients: data.map((p) => ({ email: p.email, name: p.full_name })),
+      recipients,
     },
   });
 }

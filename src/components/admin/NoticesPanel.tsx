@@ -43,6 +43,23 @@ export function NoticesPanel() {
     },
   });
 
+  const activeBatchQuery = useQuery({
+    queryKey: ["active-batch-name-notices"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from("batches" as any)
+          .select("name")
+          .eq("is_active", true)
+          .maybeSingle();
+        return (data as { name: string } | null)?.name || null;
+      } catch {
+        return null;
+      }
+    },
+  });
+  const activeBatchName = activeBatchQuery.data;
+
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setPosting(true);
@@ -66,23 +83,44 @@ export function NoticesPanel() {
       toast.success("Posted to the notice board");
 
       if (sendEmailBroadcast) {
-        toast.info("Sending email broadcast to active members…");
-        const { data: members } = await supabase
+        toast.info(`Sending email broadcast to active ${activeBatchName ? `Batch (${activeBatchName})` : ""} members…`);
+        
+        let query = supabase
           .from("profiles")
-          .select("email, full_name")
+          .select("id, email, full_name, batch, is_active")
           .eq("is_active", true);
 
-        if (members && members.length > 0) {
-          const recipients = members.map((m) => ({ email: m.email, name: m.full_name }));
+        if (activeBatchName) {
+          query = query.eq("batch", activeBatchName);
+        }
+
+        const [{ data: members }, { data: roles }] = await Promise.all([
+          query,
+          supabase.from("user_roles").select("user_id, role"),
+        ]);
+
+        const adminIds = new Set(
+          (roles ?? [])
+            .filter((r) => String(r.role) === "admin" || String(r.role) === "super_admin")
+            .map((r) => r.user_id)
+        );
+
+        const studentRecipients = (members ?? [])
+          .filter((m) => !adminIds.has(m.id))
+          .map((m) => ({ email: m.email, name: m.full_name }));
+
+        if (studentRecipients.length > 0) {
           const mailRes = await sendClubEmail({
             data: {
               subject: `[Yuga Spark Notice] ${form.title.trim()}`,
               body: `${form.body.trim()}\n\n${form.link ? `Link: ${form.link.trim()}\n\n` : ""}View on portal: ${window.location.origin}/notices`,
               kind: "announcement",
-              recipients,
+              recipients: studentRecipients,
             },
           });
-          toast.success(`Emailed ${mailRes.sent} member(s) via Google SMTP`);
+          toast.success(`Emailed ${mailRes.sent} student(s) of ${activeBatchName ? `Batch ${activeBatchName}` : "active batch"} via Google SMTP`);
+        } else {
+          toast.info(`No student accounts found for ${activeBatchName ? `Batch ${activeBatchName}` : "active batch"}`);
         }
       }
 
