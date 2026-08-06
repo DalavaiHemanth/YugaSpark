@@ -672,68 +672,103 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
                 </Button>
               </div>
 
-                  const withResumes = selectedRows.filter((m) => m.resume_url);
-                  if (withResumes.length === 0) {
-                    toast.info("None of the selected members have uploaded a resume");
-                    return;
-                  }
-                  toast.info(`Downloading ${withResumes.length} resume(s)…`);
-                  for (const m of withResumes) {
-                    const name = m.full_name || m.registration_number || m.email;
-                    await downloadUserFile("resumes", m.resume_url, name);
-                  }
-                }}
-              >
-                <FileText className="h-3.5 w-3.5 text-primary" />
-                Download Resumes
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={async () => {
-                  const withPhotos = selectedRows.filter((m) => m.photo_url);
-                  if (withPhotos.length === 0) {
-                    toast.info("None of the selected members have uploaded a photo");
-                    return;
-                  }
-                  toast.info(`Downloading ${withPhotos.length} photo(s)…`);
-                  for (const m of withPhotos) {
-                    const name = m.full_name || m.registration_number || m.email;
-                    await downloadUserFile("photos", m.photo_url, name);
-                  }
-                }}
-              >
-                <Image className="h-3.5 w-3.5 text-primary" />
-                Download Photos
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                disabled={bulkBusy}
-                onClick={() => void bulkResetPasswords()}
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-                Reset Passwords
-              </Button>
-              <button
-                type="button"
-                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setSelected([])}
-              >
-                Clear
-              </button>
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  disabled={bulkBusy}
+                  onClick={async () => {
+                    const withResumes = selectedRows.filter((m) => m.resume_url);
+                    if (withResumes.length === 0) {
+                      toast.info("None of the selected members have uploaded a resume");
+                      return;
+                    }
+                    toast.info(`Downloading ${withResumes.length} resume(s)…`);
+                    for (const m of withResumes) {
+                      const name = m.full_name || m.registration_number || m.email;
+                      await downloadUserFile("resumes", m.resume_url, name);
+                    }
+                  }}
+                >
+                  <FileText className="h-3.5 w-3.5 text-primary" /> Download Resumes
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  disabled={bulkBusy}
+                  onClick={async () => {
+                    const withPhotos = selectedRows.filter((m) => m.photo_url);
+                    if (withPhotos.length === 0) {
+                      toast.info("None of the selected members have uploaded a photo");
+                      return;
+                    }
+                    toast.info(`Downloading ${withPhotos.length} photo(s)…`);
+                    for (const m of withPhotos) {
+                      const name = m.full_name || m.registration_number || m.email;
+                      await downloadUserFile("photos", m.photo_url, name);
+                    }
+                  }}
+                >
+                  <Image className="h-3.5 w-3.5 text-primary" /> Download Photos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={bulkBusy}
+                  onClick={() => void bulkSetActive(true)}
+                >
+                  <UserCheck className="mr-1 h-3.5 w-3.5" /> Reactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-amber-500 hover:text-amber-600"
+                  disabled={bulkBusy}
+                  onClick={() => void bulkSetActive(false)}
+                >
+                  <UserX className="mr-1 h-3.5 w-3.5" /> Deactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 text-xs"
+                  disabled={bulkBusy}
+                  onClick={() => void bulkDeleteSelected()}
+                >
+                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                </Button>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground ml-1"
+                  onClick={() => setSelected([])}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5">
+              <span className="text-xs text-muted-foreground font-mono">Bulk password reset:</span>
               <Input
-                className="bg-background sm:max-w-56"
+                type="password"
+                className="h-7 w-40 bg-background text-xs"
                 value={bulkPwd}
                 minLength={6}
                 placeholder="New password"
                 onChange={(e) => setBulkPwd(e.target.value)}
               />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 text-xs"
+                disabled={bulkBusy || !bulkPwd.trim()}
+                onClick={() => void bulkResetPasswords()}
+              >
+                Reset Password for Selected
+              </Button>
             </div>
           </div>
         ) : null}
