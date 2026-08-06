@@ -150,6 +150,99 @@ export const adminCreateStudents = createServerFn({ method: "POST" })
     return { created, existed, failed };
   });
 
+export type StudentImportItem = {
+  email: string;
+  full_name?: string | null;
+  registration_number?: string | null;
+  year?: string | null;
+  batch?: string | null;
+};
+
+/** Admin: bulk import student accounts with mapped profile attributes (Name, Reg No, Year, Batch). */
+export const adminImportStudentsWithProfiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { students: StudentImportItem[] }) => ({
+    students: (data.students ?? []).map((s) => ({
+      email: String(s.email).trim().toLowerCase(),
+      full_name: s.full_name ? String(s.full_name).trim() : null,
+      registration_number: s.registration_number ? String(s.registration_number).trim() : null,
+      year: s.year ? String(s.year).trim() : null,
+      batch: s.batch ? String(s.batch).trim() : null,
+    })).filter((s) => s.email.length > 0),
+  }))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let created = 0;
+    let updated = 0;
+    const failed: string[] = [];
+
+    for (const student of data.students) {
+      let email = student.email;
+      if (!email.includes("@")) {
+        email = `${email}@rgmcet.edu.in`;
+      }
+
+      await supabaseAdmin.from("allowed_emails").upsert({ email }, { onConflict: "email" });
+
+      const { data: existing } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      let userId = existing?.id ?? null;
+
+      if (!userId) {
+        const { data: authData, error } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password: STUDENT_DEFAULT_PASSWORD,
+          email_confirm: true,
+        });
+
+        if (!error && authData?.user) {
+          userId = authData.user.id;
+          created += 1;
+        } else if (error?.message.toLowerCase().includes("already")) {
+          const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+          const found = userList?.users?.find((u) => u.email?.toLowerCase() === email);
+          userId = found?.id ?? null;
+          updated += 1;
+        } else {
+          failed.push(email);
+          continue;
+        }
+      } else {
+        updated += 1;
+      }
+
+      if (userId) {
+        const updatePayload: Record<string, unknown> = {};
+        if (student.full_name) updatePayload.full_name = student.full_name;
+        if (student.registration_number) updatePayload.registration_number = student.registration_number;
+        if (student.year) updatePayload.year = student.year;
+        if (student.batch) updatePayload.batch = student.batch;
+        updatePayload.profile_completed = true;
+
+        await supabaseAdmin
+          .from("profiles")
+          .update(updatePayload)
+          .eq("id", userId);
+      }
+    }
+
+    await supabaseAdmin.rpc("write_audit", {
+      _action: "bulk_import",
+      _entity: "student",
+      _entity_id: "",
+      _summary: `Imported ${data.students.length} student profile(s) — ${created} created, ${updated} updated`,
+      _details: { count: data.students.length, created, updated, failed },
+      _actor: context.userId,
+    });
+
+    return { created, updated, failed };
+  });
+
 /** Admin: set another member's password. */
 export const adminSetPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

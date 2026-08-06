@@ -42,6 +42,7 @@ import {
   ShieldPlus,
   ShieldMinus,
   ShieldCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
@@ -68,6 +69,7 @@ import { SaturdayAttendancePanel } from "@/components/admin/SaturdayAttendancePa
 import { BatchesPanel } from "@/components/admin/BatchesPanel";
 import { EmailLogPanel } from "@/components/admin/EmailLogPanel";
 import { DomainPanel } from "@/components/admin/DomainPanel";
+import { BulkImportModal } from "@/components/admin/BulkImportModal";
 
 const TITLE = "Admin console — Yuga Spark";
 const DESCRIPTION = "Manage Yuga Spark members, hackathons and club access settings.";
@@ -311,6 +313,7 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     await createFromList(found);
   }
 
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const { isSuperAdmin: callerIsSuperAdmin } = useAuth();
   const [batchFilter, setBatchFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState<"all" | "student" | "admin" | "super_admin">("all");
@@ -537,16 +540,20 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
             </Button>
           </form>
           <div className="mt-4 border-t border-border pt-4">
-            <Label className="text-xs font-semibold">Bulk import spreadsheet (.xlsx, .csv)</Label>
-            <Input
-              type="file"
-              accept=".xlsx,.csv"
-              className="mt-2 text-xs"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void importSheet(f);
-              }}
-            />
+            <Label className="text-xs font-semibold">Smart Bulk Import</Label>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              Upload an Excel or CSV file to map columns (Name, Reg No, Year, Batch) and import members.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2.5 w-full gap-2 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => setImportModalOpen(true)}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Spreadsheet & Map Columns
+            </Button>
           </div>
         </div>
       </div>
@@ -800,6 +807,16 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
           ) : null}
         </ul>
       </div>
+
+      <BulkImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        batchOptions={batchOptions}
+        activeBatchName={activeBatchName}
+        onSuccess={() => {
+          void members.refetch();
+        }}
+      />
     </div>
   );
 }
