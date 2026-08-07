@@ -43,7 +43,6 @@ function Index() {
       <header className="border-b border-border bg-card/60 backdrop-blur-md shrink-0">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-3">
-            <img src="/rgmcet_logo.png" alt="RGMCET Logo" className="h-8 w-8 rounded-full object-cover border border-border" />
             <SparkMark />
           </div>
           <div className="flex items-center gap-2.5">
@@ -64,7 +63,7 @@ function Index() {
       {/* Main Single-Screen Content (No Scroll) */}
       <main className="flex-1 flex flex-col justify-center items-center px-6 py-4 text-center max-w-4xl mx-auto w-full">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
-          <Building2 className="h-3.5 w-3.5" /> RGMCET Autonomous · Department of CSE
+          <Building2 className="h-3.5 w-3.5" /> RGMCET Autonomous · Department of CSE (Data Science)
         </div>
 
         <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-tight">
