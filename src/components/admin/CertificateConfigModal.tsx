@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory1Name: "Dr. T. Jayachandra Prasad",
   signatory1Title: "Principal, RGMCET",
   signatory2Name: "Dr. K. Subba Reddy",
-  signatory2Title: "Faculty Convener & HOD, CSE (Data Science)",
+  signatory2Title: "Faculty Convener & HOD, CSE",
   collegeLogoUrl: "/rgmcet_logo.png",
   clubLogoUrl: "/yugaspark_logo.png",
   showSignatory1: true,
