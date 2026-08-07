@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAuth, sendError } from "./_lib/auth.js";
 import { getSupabaseAdmin } from "./_lib/supabase-admin.js";
+import { checkRateLimit, LIMITS } from "./_lib/rate-limit.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -11,6 +12,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     const e = err as { message: string; status?: number };
     return sendError(res, e.message, e.status ?? 401);
+  }
+
+  // Rate limit: 10 password resets per minute per admin
+  const rl = checkRateLimit(ctx.userId, { route: "admin-set-password", ...LIMITS["admin-set-password"] });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetMs / 1000)}s.` });
   }
 
   try {

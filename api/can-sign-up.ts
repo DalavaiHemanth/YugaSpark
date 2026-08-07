@@ -1,11 +1,19 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getSupabaseAdmin } from "./_lib/supabase-admin.js";
+import { checkRateLimit, LIMITS } from "./_lib/rate-limit.js";
 
 const ADMIN_EMAILS = ["jayakrushna1622@gmail.com", "hemanthleads@gmail.com"];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Rate limit by IP (public route — no auth available)
+  const ip = String(req.headers["x-forwarded-for"] ?? req.socket?.remoteAddress ?? "unknown");
+  const rl = checkRateLimit(ip, { route: "can-sign-up", ...LIMITS["can-sign-up"] });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: "Too many requests. Try again later." });
   }
 
   try {

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAuth, sendError } from "./_lib/auth.js";
 import { getSupabaseAdmin } from "./_lib/supabase-admin.js";
+import { checkRateLimit, LIMITS } from "./_lib/rate-limit.js";
 
 const STUDENT_DEFAULT_PASSWORD = "yugaspark123";
 
@@ -21,6 +22,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     const e = err as { message: string; status?: number };
     return sendError(res, e.message, e.status ?? 401);
+  }
+
+  // Rate limit: 5 bulk imports per 5 minutes per admin
+  const rl = checkRateLimit(ctx.userId, { route: "admin-import-students", ...LIMITS["admin-import-students"] });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetMs / 1000)}s.` });
   }
 
   try {
