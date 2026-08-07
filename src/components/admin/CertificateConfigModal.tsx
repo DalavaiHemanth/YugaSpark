@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Save, Palette, ShieldCheck, QrCode, Building2 } from "lucide-react";
+import { Eye, Save, Building2, Image as ImageIcon, ShieldCheck, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCertificate, type CertificateConfig } from "@/lib/certificate";
 
@@ -32,6 +32,8 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory1Title: "Principal, RGMCET",
   signatory2Name: "Faculty Convener",
   signatory2Title: "Head of Department, CSE",
+  collegeLogoUrl: "/rgmcet_logo.png",
+  clubLogoUrl: "/yugaspark_logo.png",
   showRegNo: true,
   showDigitalSeal: true,
   showQrStamp: true,
@@ -91,8 +93,8 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
     }
   }
 
-  function handleTestPreview() {
-    downloadCertificate(
+  async function handleTestPreview() {
+    await downloadCertificate(
       {
         name: "Dalavai Hemanth",
         regNo: "23091A3245",
@@ -114,7 +116,7 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
             Official RGMCET College Certificate Format Customizer
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Configure official college headers, digital signatures (Principal & HOD/Convener), logos, digital seals, and themes.
+            Configure official college headers, dual logos (RGMCET Crest & Yuga Spark Emblem), digital signatures, and seals.
           </DialogDescription>
         </DialogHeader>
 
@@ -140,6 +142,45 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                 <SelectItem value="emerald_prestige">🌿 Prestige Emerald & Gold (Modern Academic)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Logos Section */}
+          <div className="space-y-3 rounded-xl border border-border p-4 bg-card">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-primary" /> Dual Logo Assets
+            </Label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 rounded-lg bg-secondary/30 p-3 border border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-bold">RGMCET College Logo</Label>
+                  {config.collegeLogoUrl ? (
+                    <img src={config.collegeLogoUrl} alt="RGMCET Logo" className="h-6 w-6 rounded-full object-cover border" />
+                  ) : null}
+                </div>
+                <Input
+                  value={config.collegeLogoUrl}
+                  onChange={(e) => setConfig({ ...config, collegeLogoUrl: e.target.value })}
+                  placeholder="/rgmcet_logo.png"
+                  className="h-7 text-xs bg-background"
+                />
+              </div>
+
+              <div className="space-y-1.5 rounded-lg bg-secondary/30 p-3 border border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-bold">Yuga Spark Club Logo</Label>
+                  {config.clubLogoUrl ? (
+                    <img src={config.clubLogoUrl} alt="Spark Logo" className="h-6 w-6 rounded-full object-cover border" />
+                  ) : null}
+                </div>
+                <Input
+                  value={config.clubLogoUrl}
+                  onChange={(e) => setConfig({ ...config, clubLogoUrl: e.target.value })}
+                  placeholder="/yugaspark_logo.png"
+                  className="h-7 text-xs bg-background"
+                />
+              </div>
+            </div>
           </div>
 
           {/* College Name & SubHeader */}
@@ -203,6 +244,15 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                     className="h-7 text-xs bg-background"
                   />
                 </div>
+                <div>
+                  <Label className="text-[10px]">Digital Signature PNG URL (Optional)</Label>
+                  <Input
+                    value={config.signatory1ImgUrl || ""}
+                    onChange={(e) => setConfig({ ...config, signatory1ImgUrl: e.target.value })}
+                    placeholder="https://.../signature1.png"
+                    className="h-7 text-xs bg-background"
+                  />
+                </div>
               </div>
 
               {/* Signatory 2 (Faculty Convener / HOD) */}
@@ -221,6 +271,15 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                   <Input
                     value={config.signatory2Title}
                     onChange={(e) => setConfig({ ...config, signatory2Title: e.target.value })}
+                    className="h-7 text-xs bg-background"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px]">Digital Signature PNG URL (Optional)</Label>
+                  <Input
+                    value={config.signatory2ImgUrl || ""}
+                    onChange={(e) => setConfig({ ...config, signatory2ImgUrl: e.target.value })}
+                    placeholder="https://.../signature2.png"
                     className="h-7 text-xs bg-background"
                   />
                 </div>
@@ -279,10 +338,10 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" size="sm" onClick={handleTestPreview} className="gap-1.5 text-xs">
+          <Button variant="outline" size="sm" onClick={() => void handleTestPreview()} className="gap-1.5 text-xs">
             <Eye className="h-3.5 w-3.5" /> Test Sample College Certificate
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs">
+          <Button size="sm" onClick={() => void handleSave()} disabled={saving} className="gap-1.5 text-xs">
             <Save className="h-3.5 w-3.5" /> Save Official Certificate Format
           </Button>
         </DialogFooter>
