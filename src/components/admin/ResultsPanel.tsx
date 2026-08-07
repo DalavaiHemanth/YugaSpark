@@ -29,18 +29,35 @@ export function ResultsPanel() {
   const [showQrScanner, setShowQrScanner] = useState(false);
 
   const hackathons = useQuery({
-    queryKey: ["hackathons"],
+    queryKey: ["hackathons-admin-results"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
-        .select("id,title,event_date")
+        .select("id, title, event_date, certificate_mode")
         .order("event_date", { ascending: false });
       if (error) throw new Error(error.message);
-      return data;
+      return data ?? [];
     },
   });
 
   const selectedHackathon = (hackathons.data ?? []).find((h) => h.id === hid);
+  const isCertEnabled = selectedHackathon?.certificate_mode !== "off";
+
+  async function toggleCertificateIssuance(enabled: boolean) {
+    if (!hid) return;
+    const nextMode = enabled ? "auto" : "off";
+    const { error } = await supabase
+      .from("hackathons")
+      .update({ certificate_mode: nextMode })
+      .eq("id", hid);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(enabled ? "Certificate issuing ENABLED for this event" : "Certificate issuing DISABLED for this event");
+    void hackathons.refetch();
+  }
 
   const members = useQuery({
     queryKey: ["admin-members"],
@@ -205,8 +222,45 @@ export function ResultsPanel() {
           </SelectContent>
         </Select>
         <p className="mt-3 text-sm text-muted-foreground">
-          Mark attendance, set placement (1–3 counts as a win) and award points. Upload a CSV spreadsheet containing Registration Numbers and Prizes/Ranks to bulk import results. Certificates unlock automatically for all attended members.
+          Mark attendance, set placement (1–3 counts as a win) and award points. Upload a CSV spreadsheet containing Registration Numbers and Prizes/Ranks to bulk import results. Certificates unlock automatically for all attended members when enabled.
         </p>
+
+        {hid ? (
+          <div className="mt-4 rounded-xl border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Certificate Issuance
+                  </Label>
+                  <Badge
+                    variant={isCertEnabled ? "default" : "secondary"}
+                    className="text-[10px] font-bold"
+                  >
+                    {isCertEnabled ? "ON (Issuing Enabled)" : "OFF (Disabled)"}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {isCertEnabled
+                    ? "Attended members can download their auto-generated HTML5 Canvas certificates."
+                    : "Certificate downloads for this event are currently disabled by admins."}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="cert-issuance-toggle"
+                  checked={isCertEnabled}
+                  onCheckedChange={(c) => void toggleCertificateIssuance(c)}
+                />
+                <Label htmlFor="cert-issuance-toggle" className="text-xs font-semibold cursor-pointer">
+                  {isCertEnabled ? "ON" : "OFF"}
+                </Label>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {hid ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
