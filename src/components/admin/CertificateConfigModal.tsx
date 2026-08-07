@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Award, Sparkles, Eye, Save, Palette, ShieldCheck, QrCode } from "lucide-react";
+import { Eye, Save, Palette, ShieldCheck, QrCode, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCertificate, type CertificateConfig } from "@/lib/certificate";
 
@@ -24,13 +24,16 @@ type CertificateConfigModalProps = {
 };
 
 const DEFAULT_CONFIG: CertificateConfig = {
-  theme: "classic",
-  headerTitle: "YUGA SPARK · HACKATHON CLUB · RGMCET",
-  signatory1Name: "Jaya Krushna & Hemanth",
-  signatory1Title: "Club Leads",
-  signatory2Name: "Faculty Coordinator",
-  signatory2Title: "RGMCET Hackathon Club",
+  theme: "rgmcet_gold",
+  collegeName: "RAJEEV GANDHI MEMORIAL COLLEGE OF ENGG & TECH",
+  subHeader: "(AUTONOMOUS) · NAAC A+ Grade · Approved by AICTE, Affiliated to JNTUA · Nandyal",
+  clubName: "YUGA SPARK HACKATHON CLUB",
+  signatory1Name: "Dr. T. Jayachandra Prasad",
+  signatory1Title: "Principal, RGMCET",
+  signatory2Name: "Faculty Convener",
+  signatory2Title: "Head of Department, CSE",
   showRegNo: true,
+  showDigitalSeal: true,
   showQrStamp: true,
 };
 
@@ -79,7 +82,7 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
 
       if (error) throw new Error(error.message);
 
-      toast.success("Certificate formatting & template settings saved!");
+      toast.success("Official College Certificate formatting saved!");
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save settings");
@@ -93,13 +96,13 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
       {
         name: "Dalavai Hemanth",
         regNo: "23091A3245",
-        hackathon: "Yuga Spark AI Hackathon 2026",
+        hackathon: "National Level AI & Cloud Hackathon 2026",
         date: new Date().toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" }),
         placement: 1,
       },
       config,
     );
-    toast.success("Sample 1st Place Certificate generated!");
+    toast.success("Sample Official RGMCET Certificate generated!");
   }
 
   return (
@@ -107,11 +110,11 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-bold text-lg">
-            <Palette className="h-5 w-5 text-primary" />
-            Customize Certificate Formatting & Template
+            <Building2 className="h-5 w-5 text-primary" />
+            Official RGMCET College Certificate Format Customizer
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Modify colors, theme styles, organization header title, signatories, and QR stamp settings for all issued certificates.
+            Configure official college headers, digital signatures (Principal & HOD/Convener), logos, digital seals, and themes.
           </DialogDescription>
         </DialogHeader>
 
@@ -119,9 +122,9 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
           {/* Theme Selector */}
           <div className="space-y-1.5 rounded-xl border border-border p-4 bg-card">
             <Label className="text-xs font-semibold flex items-center justify-between">
-              <span>Certificate Color Theme</span>
-              <Badge variant="outline" className="text-[10px] capitalize font-bold">
-                {config.theme} Theme
+              <span>Academic Certificate Theme</span>
+              <Badge variant="default" className="text-[10px] uppercase font-bold">
+                {config.theme.replace("_", " ")}
               </Badge>
             </Label>
             <Select
@@ -132,35 +135,58 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                 <SelectValue placeholder="Select Theme" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="classic">🎨 Classic Ivory & Amber (Default Yuga Spark)</SelectItem>
-                <SelectItem value="gold">👑 Royal Dark & Gold (Metallic Gold Accent)</SelectItem>
-                <SelectItem value="emerald">🌿 Clean Emerald Tech (Green & White)</SelectItem>
-                <SelectItem value="dark">⚡ Cyber Dark & Indigo (Modern Dark Theme)</SelectItem>
+                <SelectItem value="rgmcet_gold">🎓 Official RGMCET Gold & Royal Maroon (Classic Diploma)</SelectItem>
+                <SelectItem value="navy_platinum">🏛️ Academic Navy & Platinum (Sleek Professional)</SelectItem>
+                <SelectItem value="emerald_prestige">🌿 Prestige Emerald & Gold (Modern Academic)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Header Title */}
-          <div className="space-y-1.5 rounded-xl border border-border p-4 bg-card">
-            <Label className="text-xs font-semibold">Organization Header Title</Label>
-            <Input
-              value={config.headerTitle}
-              onChange={(e) => setConfig({ ...config, headerTitle: e.target.value })}
-              placeholder="YUGA SPARK · HACKATHON CLUB · RGMCET"
-              className="text-xs bg-background"
-            />
-          </div>
-
-          {/* Signatories Section */}
+          {/* College Name & SubHeader */}
           <div className="space-y-3 rounded-xl border border-border p-4 bg-card">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Signatories & Authorities
+              College & Club Header
+            </Label>
+
+            <div>
+              <Label className="text-[11px] font-semibold">College Title</Label>
+              <Input
+                value={config.collegeName}
+                onChange={(e) => setConfig({ ...config, collegeName: e.target.value })}
+                className="text-xs bg-background"
+              />
+            </div>
+
+            <div>
+              <Label className="text-[11px] font-semibold">Sub-Header (Accreditation & Location)</Label>
+              <Input
+                value={config.subHeader}
+                onChange={(e) => setConfig({ ...config, subHeader: e.target.value })}
+                className="text-xs bg-background"
+              />
+            </div>
+
+            <div>
+              <Label className="text-[11px] font-semibold">Organizing Club Name</Label>
+              <Input
+                value={config.clubName}
+                onChange={(e) => setConfig({ ...config, clubName: e.target.value })}
+                className="text-xs bg-background"
+              />
+            </div>
+          </div>
+
+          {/* Official Digital Signatories Section (NO CLUB LEADS) */}
+          <div className="space-y-3 rounded-xl border border-border p-4 bg-card">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span>Official Digital Signatories</span>
+              <span className="text-[10px] text-emerald-600 font-bold">✍️ Digital Signatures Enabled</span>
             </Label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Signatory 1 */}
+              {/* Signatory 1 (Principal / Head Official) */}
               <div className="space-y-2 rounded-lg bg-secondary/30 p-3 border border-border">
-                <p className="text-[11px] font-semibold text-primary">Left Signatory</p>
+                <p className="text-[11px] font-bold text-primary">Left Signatory (Principal / Authority)</p>
                 <div>
                   <Label className="text-[10px]">Name</Label>
                   <Input
@@ -179,9 +205,9 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                 </div>
               </div>
 
-              {/* Signatory 2 */}
+              {/* Signatory 2 (Faculty Convener / HOD) */}
               <div className="space-y-2 rounded-lg bg-secondary/30 p-3 border border-border">
-                <p className="text-[11px] font-semibold text-primary">Right Signatory / Seal</p>
+                <p className="text-[11px] font-bold text-primary">Right Signatory (Faculty Convener / HOD)</p>
                 <div>
                   <Label className="text-[10px]">Name</Label>
                   <Input
@@ -202,10 +228,10 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
             </div>
           </div>
 
-          {/* Toggles: Reg No & QR Stamp */}
+          {/* Toggles */}
           <div className="space-y-3 rounded-xl border border-border p-4 bg-card">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Optional Elements
+              Seal & Verification Settings
             </Label>
 
             <div className="flex items-center justify-between">
@@ -213,7 +239,7 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
                 <Label htmlFor="show-reg" className="text-xs font-semibold cursor-pointer">
                   Display Student Registration Number
                 </Label>
-                <p className="text-[11px] text-muted-foreground">Renders Reg No line under student name</p>
+                <p className="text-[11px] text-muted-foreground">Renders Reg No line under recipient name</p>
               </div>
               <Switch
                 id="show-reg"
@@ -224,10 +250,24 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
 
             <div className="flex items-center justify-between border-t border-border pt-3">
               <div className="space-y-0.5">
-                <Label htmlFor="show-qr" className="text-xs font-semibold cursor-pointer flex items-center gap-1.5">
-                  <QrCode className="h-3.5 w-3.5 text-primary" /> Render Verification QR Stamp
+                <Label htmlFor="show-seal" className="text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Render Official College Seal
                 </Label>
-                <p className="text-[11px] text-muted-foreground">Renders live QR verification stamp on certificate</p>
+                <p className="text-[11px] text-muted-foreground">Renders official starburst verification seal in center bottom</p>
+              </div>
+              <Switch
+                id="show-seal"
+                checked={config.showDigitalSeal}
+                onCheckedChange={(c) => setConfig({ ...config, showDigitalSeal: c })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="show-qr" className="text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                  <QrCode className="h-3.5 w-3.5 text-primary" /> Render Digital Verification Footer
+                </Label>
+                <p className="text-[11px] text-muted-foreground">Renders RGMCET database verification line at bottom</p>
               </div>
               <Switch
                 id="show-qr"
@@ -240,10 +280,10 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" size="sm" onClick={handleTestPreview} className="gap-1.5 text-xs">
-            <Eye className="h-3.5 w-3.5" /> Test Sample Certificate
+            <Eye className="h-3.5 w-3.5" /> Test Sample College Certificate
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs">
-            <Save className="h-3.5 w-3.5" /> Save Format Settings
+            <Save className="h-3.5 w-3.5" /> Save Official Certificate Format
           </Button>
         </DialogFooter>
       </DialogContent>
