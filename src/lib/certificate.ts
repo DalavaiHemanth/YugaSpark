@@ -35,7 +35,7 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory1Title: "Principal, RGMCET",
   signatory2Name: "Faculty Convener",
   signatory2Title: "Head of Department, CSE",
-  collegeLogoUrl: "/rgmcet_logo.png",
+  collegeLogoUrl: "/rgmcet_logo.ico",
   clubLogoUrl: "/yugaspark_logo.png",
   showRegNo: true,
   showDigitalSeal: true,
