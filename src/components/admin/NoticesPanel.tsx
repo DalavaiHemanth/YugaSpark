@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, Mail } from "lucide-react";
+import { Trash2, Mail, Pin, AlertTriangle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { sendClubEmail } from "@/lib/email.functions";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -28,6 +30,8 @@ export function NoticesPanel() {
     body: "",
     link: "",
     options: "",
+    priority: "normal",
+    is_pinned: false,
     expires_at: "",
   });
 
@@ -37,9 +41,10 @@ export function NoticesPanel() {
       const { data, error } = await supabase
         .from("notices")
         .select("*")
+        .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data;
+      return data ?? [];
     },
   });
 
@@ -74,6 +79,8 @@ export function NoticesPanel() {
         body: form.body.trim() || null,
         link: form.link.trim() || null,
         options,
+        priority: form.priority,
+        is_pinned: form.is_pinned,
         expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
         created_by: user?.id ?? null,
       });
@@ -124,7 +131,16 @@ export function NoticesPanel() {
         }
       }
 
-      setForm({ kind: "announcement", title: "", body: "", link: "", options: "", expires_at: "" });
+      setForm({
+        kind: "announcement",
+        title: "",
+        body: "",
+        link: "",
+        options: "",
+        priority: "normal",
+        is_pinned: false,
+        expires_at: "",
+      });
       setSendEmailBroadcast(false);
       void notices.refetch();
     } catch (err) {
@@ -134,21 +150,35 @@ export function NoticesPanel() {
     }
   }
 
+  async function togglePin(id: string, currentPinned: boolean) {
+    const { error } = await supabase
+      .from("notices")
+      .update({ is_pinned: !currentPinned })
+      .eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(!currentPinned ? "Notice pinned to top!" : "Notice unpinned");
+    void notices.refetch();
+  }
+
   async function remove(id: string) {
     const { error } = await supabase.from("notices").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
     }
+    toast.success("Notice deleted");
     void notices.refetch();
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <form onSubmit={add} className="surface h-fit space-y-3 p-4 sm:p-6">
+      <form onSubmit={add} className="surface h-fit space-y-3.5 p-4 sm:p-6">
         <h3 className="font-display text-lg font-bold">New notice</h3>
         <div>
-          <Label>Type</Label>
+          <Label className="text-xs">Type</Label>
           <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v })}>
             <SelectTrigger className="mt-1">
               <SelectValue />
@@ -162,29 +192,42 @@ export function NoticesPanel() {
           </Select>
         </div>
         <div>
-          <Label>Title</Label>
+          <Label className="text-xs">Title</Label>
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </div>
         <div>
-          <Label>Details</Label>
+          <Label className="text-xs">Priority</Label>
+          <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="important">Important</SelectItem>
+              <SelectItem value="urgent">Urgent 🔥</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Details</Label>
           <Textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={3} />
         </div>
         <div>
-          <Label>Link (optional)</Label>
+          <Label className="text-xs">Link (optional)</Label>
           <Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} />
         </div>
         {form.kind === "poll" ? (
           <div>
-            <Label>Poll options (one per line)</Label>
+            <Label className="text-xs">Poll options (one per line)</Label>
             <Textarea
               value={form.options}
               onChange={(e) => setForm({ ...form, options: e.target.value })}
-              rows={4}
+              rows={3}
             />
           </div>
         ) : null}
         <div>
-          <Label>Expires on (optional)</Label>
+          <Label className="text-xs">Expires on (optional)</Label>
           <Input
             type="datetime-local"
             value={form.expires_at}
@@ -192,7 +235,18 @@ export function NoticesPanel() {
           />
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center justify-between pt-1">
+          <Label htmlFor="pin-notice" className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+            <Pin className="h-3.5 w-3.5 text-primary" /> Pin to top
+          </Label>
+          <Switch
+            id="pin-notice"
+            checked={form.is_pinned}
+            onCheckedChange={(c) => setForm({ ...form, is_pinned: c })}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 pt-1 border-t border-border">
           <Checkbox
             id="broadcast-email"
             checked={sendEmailBroadcast}
@@ -200,7 +254,7 @@ export function NoticesPanel() {
           />
           <Label htmlFor="broadcast-email" className="text-xs font-normal cursor-pointer flex items-center gap-1">
             <Mail className="h-3.5 w-3.5 text-primary" />
-            Send email broadcast via Google SMTP
+            Send email broadcast to Active Batch {activeBatchName ? `(${activeBatchName})` : ""}
           </Label>
         </div>
 
@@ -211,9 +265,25 @@ export function NoticesPanel() {
 
       <div className="space-y-3">
         {(notices.data ?? []).map((n) => (
-          <div key={n.id} className="surface flex items-start justify-between gap-3 p-4">
-            <div>
-              <p className="font-medium">{n.title}</p>
+          <div key={n.id} className={`surface flex items-start justify-between gap-3 p-4 ${n.is_pinned ? "border-l-4 border-l-primary bg-primary/5" : ""}`}>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {n.is_pinned ? (
+                  <Badge variant="default" className="gap-1 text-[10px]">
+                    <Pin className="h-3 w-3 fill-current" /> Pinned
+                  </Badge>
+                ) : null}
+                {n.priority === "urgent" ? (
+                  <Badge variant="destructive" className="gap-1 text-[10px]">
+                    <AlertTriangle className="h-3 w-3" /> Urgent
+                  </Badge>
+                ) : n.priority === "important" ? (
+                  <Badge variant="outline" className="gap-1 text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                    <AlertCircle className="h-3 w-3" /> Important
+                  </Badge>
+                ) : null}
+                <p className="font-semibold text-sm truncate">{n.title}</p>
+              </div>
               <p className="text-xs capitalize text-muted-foreground">
                 {n.kind} · {new Date(n.created_at).toLocaleDateString()}
                 {n.expires_at
@@ -221,9 +291,20 @@ export function NoticesPanel() {
                   : ""}
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => remove(n.id)} aria-label="Delete">
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => void togglePin(n.id, Boolean(n.is_pinned))}
+                title={n.is_pinned ? "Unpin notice" : "Pin notice to top"}
+                className={n.is_pinned ? "text-primary" : "text-muted-foreground"}
+              >
+                <Pin className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => void remove(n.id)} aria-label="Delete">
+                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>

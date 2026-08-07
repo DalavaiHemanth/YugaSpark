@@ -293,6 +293,8 @@ CREATE TABLE IF NOT EXISTS public.notices (
   body text,
   link text,
   options jsonb NOT NULL DEFAULT '[]'::jsonb,
+  is_pinned boolean NOT NULL DEFAULT false,
+  priority text NOT NULL DEFAULT 'normal',
   expires_at timestamptz,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now()
