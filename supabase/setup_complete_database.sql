@@ -250,6 +250,7 @@ CREATE TABLE IF NOT EXISTS public.resources (
   description text,
   url text NOT NULL,
   category text NOT NULL DEFAULT 'general',
+  status text NOT NULL DEFAULT 'approved',
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -259,6 +260,8 @@ ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS resources_read ON public.resources;
 CREATE POLICY resources_read ON public.resources FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS resources_insert ON public.resources;
+CREATE POLICY resources_insert ON public.resources FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS resources_admin ON public.resources;
 CREATE POLICY resources_admin ON public.resources FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
 
