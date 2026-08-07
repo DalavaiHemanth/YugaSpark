@@ -76,15 +76,25 @@ export function InsightsPanel() {
   });
 
   const counts = useQuery({
-    queryKey: ["insight-counts"],
+    queryKey: ["insight-counts", since?.toISOString() ?? "all"],
     staleTime: 2 * 60_000,
     gcTime: 10 * 60_000,
     queryFn: async () => {
+      // ✅ Filter in DB — don't fetch all rows and filter in JS
+      const sinceIso = since?.toISOString();
       const [members, regs, results, squads] = await Promise.all([
-        supabase.from("profiles").select("id,profile_completed,is_active,created_at"),
-        supabase.from("registrations").select("id,hackathon_id,created_at"),
-        supabase.from("hackathon_results").select("id,attended,placement,hackathon_id,created_at"),
-        supabase.from("squads").select("id,created_at"),
+        sinceIso
+          ? supabase.from("profiles").select("id,profile_completed,is_active,created_at").gte("created_at", sinceIso)
+          : supabase.from("profiles").select("id,profile_completed,is_active,created_at"),
+        sinceIso
+          ? supabase.from("registrations").select("id,hackathon_id,created_at").gte("created_at", sinceIso)
+          : supabase.from("registrations").select("id,hackathon_id,created_at"),
+        sinceIso
+          ? supabase.from("hackathon_results").select("id,attended,placement,hackathon_id,created_at").gte("created_at", sinceIso)
+          : supabase.from("hackathon_results").select("id,attended,placement,hackathon_id,created_at"),
+        sinceIso
+          ? supabase.from("squads").select("id,created_at").gte("created_at", sinceIso)
+          : supabase.from("squads").select("id,created_at"),
       ]);
       return {
         members: members.data ?? [],
@@ -110,13 +120,12 @@ export function InsightsPanel() {
   });
 
   const c = counts.data;
-  const inRange = (iso: string | null) =>
-    !since || (iso ? new Date(iso) >= since : false);
 
-  const regs = (c?.regs ?? []).filter((r) => inRange(r.created_at));
-  const results = (c?.results ?? []).filter((r) => inRange(r.created_at));
-  const squads = (c?.squads ?? []).filter((s) => inRange(s.created_at));
-  const members = (c?.members ?? []).filter((m) => inRange(m.created_at));
+  // Data already filtered server-side by date range — no JS filtering needed
+  const regs = c?.regs ?? [];
+  const results = c?.results ?? [];
+  const squads = c?.squads ?? [];
+  const members = c?.members ?? [];
 
   // Participation over time — registrations vs attendance per month
   const trend = useMemo(() => {
