@@ -49,6 +49,7 @@ import { Stethoscope } from "lucide-react";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { SystemChecksPanel } from "@/components/admin/SystemChecksPanel";
 import { AdminSearch, type SearchHit } from "@/components/admin/AdminSearch";
+import { AdminEditProfileModal } from "@/components/admin/AdminEditProfileModal";
 import { ResultsPanel } from "@/components/admin/ResultsPanel";
 import { ResourcesPanel } from "@/components/admin/ResourcesPanel";
 import { NoticesPanel } from "@/components/admin/NoticesPanel";
@@ -863,6 +864,7 @@ function MemberRow({
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [downloadingPhoto, setDownloadingPhoto] = useState(false);
   const [downloadingResume, setDownloadingResume] = useState(false);
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
 
   useEffect(() => {
     if (member.batch) {
@@ -1036,6 +1038,15 @@ function MemberRow({
         <div className="flex shrink-0 flex-wrap gap-1">
           <Button
             size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+            onClick={() => setEditProfileModalOpen(true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Fill / Edit Profile
+          </Button>
+          <Button
+            size="sm"
             variant="ghost"
             className="gap-1.5 text-xs text-primary"
             onClick={() => setBatchOpen((v) => !v)}
@@ -1204,6 +1215,12 @@ function MemberRow({
           </Button>
         </form>
       ) : null}
+      <AdminEditProfileModal
+        open={editProfileModalOpen}
+        onOpenChange={setEditProfileModalOpen}
+        member={member}
+        onSuccess={onChanged}
+      />
     </li>
   );
 }
