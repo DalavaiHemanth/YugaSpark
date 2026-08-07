@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { AppShell, PageHeader, EmptyState } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { downloadCertificate } from "@/lib/certificate";
+import { downloadCertificate, fetchCertificateConfig } from "@/lib/certificate";
 
 const TITLE = "Certificates — Yuga Spark";
 const DESCRIPTION = "Download participation and winner certificates for every hackathon you attended.";
@@ -27,6 +27,11 @@ export const Route = createFileRoute("/_authenticated/certificates")({
 
 function CertificatesPage() {
   const { user, profile } = useAuth();
+
+  const certConfig = useQuery({
+    queryKey: ["certificate-config"],
+    queryFn: fetchCertificateConfig,
+  });
 
   const results = useQuery({
     queryKey: ["my-results", user?.id],
@@ -113,12 +118,16 @@ function CertificatesPage() {
                     <Button
                       size="sm"
                       onClick={() =>
-                        downloadCertificate({
-                          name: profile?.full_name ?? profile?.email ?? "Member",
-                          hackathon: h?.title ?? "Hackathon",
-                          date,
-                          placement: r.placement,
-                        })
+                        downloadCertificate(
+                          {
+                            name: profile?.full_name ?? profile?.email ?? "Member",
+                            regNo: profile?.registration_number,
+                            hackathon: h?.title ?? "Hackathon",
+                            date,
+                            placement: r.placement,
+                          },
+                          certConfig.data,
+                        )
                       }
                     >
                       <Download className="mr-1.5 h-3.5 w-3.5" /> Download

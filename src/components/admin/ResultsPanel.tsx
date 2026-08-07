@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, QrCode, FileSpreadsheet, Upload } from "lucide-react";
+import { Download, QrCode, FileSpreadsheet, Upload, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { announceResults, emailAttendees } from "@/lib/notify";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { ResultsBulkImportModal } from "@/components/admin/ResultsBulkImportModal";
+import { CertificateConfigModal } from "@/components/admin/CertificateConfigModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -196,6 +197,7 @@ export function ResultsPanel() {
   }
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -209,9 +211,25 @@ export function ResultsPanel() {
       ) : null}
 
       <div className="surface p-6">
-        <Label>Hackathon</Label>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Label className="text-base font-bold">Hackathon</Label>
+            <p className="text-xs text-muted-foreground">Pick a hackathon to record results and customize certificates</p>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setConfigModalOpen(true)}
+            className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
+          >
+            <Palette className="h-4 w-4" />
+            Customize Certificate Format
+          </Button>
+        </div>
+
         <Select value={hid} onValueChange={(v) => { setHid(v); setDraft({}); }}>
-          <SelectTrigger className="mt-2 w-full max-w-md">
+          <SelectTrigger className="mt-3 w-full max-w-md">
             <SelectValue placeholder="Pick a hackathon to record results" />
           </SelectTrigger>
           <SelectContent>
@@ -297,6 +315,11 @@ export function ResultsPanel() {
           hackathonId={hid}
           hackathonTitle={selectedHackathon?.title || "Hackathon"}
           onSuccess={() => void results.refetch()}
+        />
+
+        <CertificateConfigModal
+          open={configModalOpen}
+          onOpenChange={setConfigModalOpen}
         />
       </div>
 
