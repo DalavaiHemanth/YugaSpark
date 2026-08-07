@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && node -e \"const fs=require('fs'); if(fs.existsSync('dist/client')) fs.cpSync('dist/client', 'dist', {recursive: true}); const html='<!DOCTYPE html><html lang=\\\"en\\\"><head><meta charset=\\\"UTF-8\\\"><meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1.0\\\"><title>Yuga Spark — RGMCET Hackathon Club Portal</title><link rel=\\\"icon\\\" href=\\\"/favicon.png\\\" type=\\\"image/png\\\"><link rel=\\\"shortcut icon\\\" href=\\\"/favicon.ico\\\" type=\\\"image/x-icon\\\"></head><body><div id=\\\"root\\\"></div><script type=\\\"module\\\" src=\\\"/src/entry-client.tsx\\\"></script></body></html>'; fs.writeFileSync('dist/index.html', html); if(fs.existsSync('dist/client')) fs.writeFileSync('dist/client/index.html', html);\"",
+    "build": "vite build && node scratch/postbuild.js",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
