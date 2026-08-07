@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Save, Building2, Image as ImageIcon, ShieldCheck, QrCode } from "lucide-react";
+import { Eye, Save, Building2, Image as ImageIcon, ShieldCheck, QrCode, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCertificate, type CertificateConfig } from "@/lib/certificate";
 
@@ -34,6 +34,8 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory2Title: "Faculty Convener & HOD, CSE",
   collegeLogoUrl: "/rgmcet_logo.png",
   clubLogoUrl: "/yugaspark_logo.png",
+  showSignatory1: true,
+  showSignatory2: true,
   showRegNo: true,
   showDigitalSeal: true,
   showQrStamp: true,
@@ -116,7 +118,7 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
             Official RGMCET College Certificate Format Customizer
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Configure official college headers, dual logos (RGMCET Crest & Yuga Spark Emblem), digital signatures, and seals.
+            Configure official college headers, dual logos (RGMCET Crest & Yuga Spark Emblem), optional digital signatories, and seals.
           </DialogDescription>
         </DialogHeader>
 
@@ -217,72 +219,98 @@ export function CertificateConfigModal({ open, onOpenChange }: CertificateConfig
             </div>
           </div>
 
-          {/* Official Digital Signatories Section (NO CLUB LEADS) */}
+          {/* Official Digital Signatories Section with Toggles */}
           <div className="space-y-3 rounded-xl border border-border p-4 bg-card">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-              <span>Official Digital Signatories</span>
-              <span className="text-[10px] text-emerald-600 font-bold">✍️ Digital Signatures Enabled</span>
+              <span className="flex items-center gap-1.5"><UserCheck className="h-3.5 w-3.5 text-primary" /> Optional Digital Signatories</span>
+              <span className="text-[10px] text-emerald-600 font-bold">Auto-Center Active Signatures</span>
             </Label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Signatory 1 (Principal / Head Official) */}
-              <div className="space-y-2 rounded-lg bg-secondary/30 p-3 border border-border">
-                <p className="text-[11px] font-bold text-primary">Left Signatory (Principal / Authority)</p>
-                <div>
-                  <Label className="text-[10px]">Name</Label>
-                  <Input
-                    value={config.signatory1Name}
-                    onChange={(e) => setConfig({ ...config, signatory1Name: e.target.value })}
-                    className="h-7 text-xs bg-background"
+              <div className={`space-y-2 rounded-lg p-3 border transition-colors ${config.showSignatory1 ? "bg-secondary/30 border-primary/40" : "bg-muted/40 border-border opacity-70"}`}>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="toggle-sig1" className="text-[11px] font-bold cursor-pointer">
+                    Signatory 1 (Principal)
+                  </Label>
+                  <Switch
+                    id="toggle-sig1"
+                    checked={config.showSignatory1}
+                    onCheckedChange={(c) => setConfig({ ...config, showSignatory1: c })}
                   />
                 </div>
-                <div>
-                  <Label className="text-[10px]">Title</Label>
-                  <Input
-                    value={config.signatory1Title}
-                    onChange={(e) => setConfig({ ...config, signatory1Title: e.target.value })}
-                    className="h-7 text-xs bg-background"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px]">Digital Signature PNG URL (Optional)</Label>
-                  <Input
-                    value={config.signatory1ImgUrl || ""}
-                    onChange={(e) => setConfig({ ...config, signatory1ImgUrl: e.target.value })}
-                    placeholder="https://.../signature1.png"
-                    className="h-7 text-xs bg-background"
-                  />
-                </div>
+                {config.showSignatory1 ? (
+                  <>
+                    <div>
+                      <Label className="text-[10px]">Name</Label>
+                      <Input
+                        value={config.signatory1Name}
+                        onChange={(e) => setConfig({ ...config, signatory1Name: e.target.value })}
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px]">Title</Label>
+                      <Input
+                        value={config.signatory1Title}
+                        onChange={(e) => setConfig({ ...config, signatory1Title: e.target.value })}
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px]">Digital Signature Image URL (Optional)</Label>
+                      <Input
+                        value={config.signatory1ImgUrl || ""}
+                        onChange={(e) => setConfig({ ...config, signatory1ImgUrl: e.target.value })}
+                        placeholder="https://.../signature1.png"
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
 
               {/* Signatory 2 (Faculty Convener / HOD) */}
-              <div className="space-y-2 rounded-lg bg-secondary/30 p-3 border border-border">
-                <p className="text-[11px] font-bold text-primary">Right Signatory (Faculty Convener / HOD)</p>
-                <div>
-                  <Label className="text-[10px]">Name</Label>
-                  <Input
-                    value={config.signatory2Name}
-                    onChange={(e) => setConfig({ ...config, signatory2Name: e.target.value })}
-                    className="h-7 text-xs bg-background"
+              <div className={`space-y-2 rounded-lg p-3 border transition-colors ${config.showSignatory2 ? "bg-secondary/30 border-primary/40" : "bg-muted/40 border-border opacity-70"}`}>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="toggle-sig2" className="text-[11px] font-bold cursor-pointer">
+                    Signatory 2 (Faculty / HOD)
+                  </Label>
+                  <Switch
+                    id="toggle-sig2"
+                    checked={config.showSignatory2}
+                    onCheckedChange={(c) => setConfig({ ...config, showSignatory2: c })}
                   />
                 </div>
-                <div>
-                  <Label className="text-[10px]">Title</Label>
-                  <Input
-                    value={config.signatory2Title}
-                    onChange={(e) => setConfig({ ...config, signatory2Title: e.target.value })}
-                    className="h-7 text-xs bg-background"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px]">Digital Signature PNG URL (Optional)</Label>
-                  <Input
-                    value={config.signatory2ImgUrl || ""}
-                    onChange={(e) => setConfig({ ...config, signatory2ImgUrl: e.target.value })}
-                    placeholder="https://.../signature2.png"
-                    className="h-7 text-xs bg-background"
-                  />
-                </div>
+                {config.showSignatory2 ? (
+                  <>
+                    <div>
+                      <Label className="text-[10px]">Name</Label>
+                      <Input
+                        value={config.signatory2Name}
+                        onChange={(e) => setConfig({ ...config, signatory2Name: e.target.value })}
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px]">Title</Label>
+                      <Input
+                        value={config.signatory2Title}
+                        onChange={(e) => setConfig({ ...config, signatory2Title: e.target.value })}
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px]">Digital Signature Image URL (Optional)</Label>
+                      <Input
+                        value={config.signatory2ImgUrl || ""}
+                        onChange={(e) => setConfig({ ...config, signatory2ImgUrl: e.target.value })}
+                        placeholder="https://.../signature2.png"
+                        className="h-7 text-xs bg-background"
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>

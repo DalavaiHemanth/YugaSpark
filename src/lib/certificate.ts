@@ -21,6 +21,8 @@ export type CertificateConfig = {
   clubLogoUrl: string;
   signatory1ImgUrl?: string;
   signatory2ImgUrl?: string;
+  showSignatory1: boolean;
+  showSignatory2: boolean;
   showRegNo: boolean;
   showDigitalSeal: boolean;
   showQrStamp: boolean;
@@ -37,6 +39,8 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory2Title: "Faculty Convener & HOD, CSE",
   collegeLogoUrl: "/rgmcet_logo.png",
   clubLogoUrl: "/yugaspark_logo.png",
+  showSignatory1: true,
+  showSignatory2: true,
   showRegNo: true,
   showDigitalSeal: true,
   showQrStamp: true,
@@ -54,7 +58,6 @@ export async function fetchCertificateConfig(): Promise<CertificateConfig> {
 
     if (data?.value) {
       const parsed = JSON.parse(data.value);
-      // Clean up legacy defaults if present
       if (parsed.signatory1Name === "Jaya Krushna & Hemanth") {
         parsed.signatory1Name = DEFAULT_CONFIG.signatory1Name;
         parsed.signatory1Title = DEFAULT_CONFIG.signatory1Title;
@@ -183,18 +186,21 @@ function drawCursiveSignature(ctx: CanvasRenderingContext2D, x: number, y: numbe
 export async function downloadCertificate(input: CertificateInput, customConfig?: CertificateConfig) {
   const config = customConfig ?? DEFAULT_CONFIG;
 
-  // Enforce removal of legacy club lead names
   if (config.signatory1Name === "Jaya Krushna & Hemanth") {
     config.signatory1Name = DEFAULT_CONFIG.signatory1Name;
     config.signatory1Title = DEFAULT_CONFIG.signatory1Title;
   }
 
+  const show1 = config.showSignatory1 ?? true;
+  const show2 = config.showSignatory2 ?? true;
+  const showSeal = config.showDigitalSeal ?? true;
+
   // Load logo images in parallel
   const [collegeImg, clubImg, sig1Img, sig2Img] = await Promise.all([
     loadImage(config.collegeLogoUrl),
     loadImage(config.clubLogoUrl),
-    config.signatory1ImgUrl ? loadImage(config.signatory1ImgUrl) : Promise.resolve(null),
-    config.signatory2ImgUrl ? loadImage(config.signatory2ImgUrl) : Promise.resolve(null),
+    show1 && config.signatory1ImgUrl ? loadImage(config.signatory1ImgUrl) : Promise.resolve(null),
+    show2 && config.signatory2ImgUrl ? loadImage(config.signatory2ImgUrl) : Promise.resolve(null),
   ]);
 
   const canvas = document.createElement("canvas");
@@ -276,7 +282,6 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.lineWidth = 3.5;
     ctx.stroke();
   } else {
-    // Vector Fallback if image failed
     drawVectorCollegeLogo(ctx, leftX, logoY, logoSize / 2, primaryColor, goldColor);
   }
 
@@ -293,7 +298,6 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.lineWidth = 3.5;
     ctx.stroke();
   } else {
-    // Vector Fallback if image failed
     drawVectorClubLogo(ctx, rightX, logoY, logoSize / 2, goldColor);
   }
 
@@ -372,66 +376,88 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
   ctx.font = "400 24px 'DM Sans', sans-serif";
   ctx.fillText(`Organized by RGMCET Hackathon Club on ${input.date}`, canvas.width / 2, currentY);
 
-  // 8. Official Digital Signatures & Authorities (NO CLUB LEADS!)
+  // 8. Dynamic Signatory & Seal Positioning
   const sigY = 940;
 
-  // Left Signatory (Principal / Authority)
-  if (sig1Img) {
-    ctx.drawImage(sig1Img, canvas.width / 2 - 460, sigY - 65, 160, 50);
-  } else {
-    // Draw elegant cursive signature graphic
-    drawCursiveSignature(ctx, canvas.width / 2 - 380, sigY - 30, config.signatory1Name);
+  let sig1X = canvas.width / 2 - 380;
+  let sig2X = canvas.width / 2 + 380;
+  let sealX = canvas.width / 2;
+
+  if (show1 && !show2) {
+    if (showSeal) {
+      sig1X = canvas.width / 2 - 250;
+      sealX = canvas.width / 2 + 250;
+    } else {
+      sig1X = canvas.width / 2;
+    }
+  } else if (!show1 && show2) {
+    if (showSeal) {
+      sig2X = canvas.width / 2 + 250;
+      sealX = canvas.width / 2 - 250;
+    } else {
+      sig2X = canvas.width / 2;
+    }
   }
 
-  ctx.font = "bold 24px 'Space Grotesk', sans-serif";
-  ctx.fillStyle = textColor;
-  ctx.fillText(config.signatory1Name || DEFAULT_CONFIG.signatory1Name, canvas.width / 2 - 380, sigY);
+  // Draw Signatory 1 if enabled
+  if (show1) {
+    if (sig1Img) {
+      ctx.drawImage(sig1Img, sig1X - 80, sigY - 65, 160, 50);
+    } else {
+      drawCursiveSignature(ctx, sig1X, sigY - 30, config.signatory1Name);
+    }
 
-  ctx.strokeStyle = "#a3a3a3";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(canvas.width / 2 - 540, sigY + 15);
-  ctx.lineTo(canvas.width / 2 - 220, sigY + 15);
-  ctx.stroke();
+    ctx.font = "bold 24px 'Space Grotesk', sans-serif";
+    ctx.fillStyle = textColor;
+    ctx.fillText(config.signatory1Name || DEFAULT_CONFIG.signatory1Name, sig1X, sigY);
 
-  ctx.fillStyle = "#166534";
-  ctx.font = "bold 12px 'JetBrains Mono', monospace";
-  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 - 380, sigY + 32);
+    ctx.strokeStyle = "#a3a3a3";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sig1X - 160, sigY + 15);
+    ctx.lineTo(sig1X + 160, sigY + 15);
+    ctx.stroke();
 
-  ctx.fillStyle = subtitleColor;
-  ctx.font = "500 20px 'DM Sans', sans-serif";
-  ctx.fillText(config.signatory1Title || DEFAULT_CONFIG.signatory1Title, canvas.width / 2 - 380, sigY + 55);
+    ctx.fillStyle = "#166534";
+    ctx.font = "bold 12px 'JetBrains Mono', monospace";
+    ctx.fillText("✍️ DIGITALLY SIGNED", sig1X, sigY + 32);
 
-  // Right Signatory (Faculty Convener / HOD)
-  if (sig2Img) {
-    ctx.drawImage(sig2Img, canvas.width / 2 + 300, sigY - 65, 160, 50);
-  } else {
-    // Draw elegant cursive signature graphic
-    drawCursiveSignature(ctx, canvas.width / 2 + 380, sigY - 30, config.signatory2Name);
+    ctx.fillStyle = subtitleColor;
+    ctx.font = "500 20px 'DM Sans', sans-serif";
+    ctx.fillText(config.signatory1Title || DEFAULT_CONFIG.signatory1Title, sig1X, sigY + 55);
   }
 
-  ctx.font = "bold 24px 'Space Grotesk', sans-serif";
-  ctx.fillStyle = textColor;
-  ctx.fillText(config.signatory2Name || DEFAULT_CONFIG.signatory2Name, canvas.width / 2 + 380, sigY);
+  // Draw Signatory 2 if enabled
+  if (show2) {
+    if (sig2Img) {
+      ctx.drawImage(sig2Img, sig2X - 80, sigY - 65, 160, 50);
+    } else {
+      drawCursiveSignature(ctx, sig2X, sigY - 30, config.signatory2Name);
+    }
 
-  ctx.strokeStyle = "#a3a3a3";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(canvas.width / 2 + 220, sigY + 15);
-  ctx.lineTo(canvas.width / 2 + 540, sigY + 15);
-  ctx.stroke();
+    ctx.font = "bold 24px 'Space Grotesk', sans-serif";
+    ctx.fillStyle = textColor;
+    ctx.fillText(config.signatory2Name || DEFAULT_CONFIG.signatory2Name, sig2X, sigY);
 
-  ctx.fillStyle = "#166534";
-  ctx.font = "bold 12px 'JetBrains Mono', monospace";
-  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 + 380, sigY + 32);
+    ctx.strokeStyle = "#a3a3a3";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sig2X - 160, sigY + 15);
+    ctx.lineTo(sig2X + 160, sigY + 15);
+    ctx.stroke();
 
-  ctx.fillStyle = subtitleColor;
-  ctx.font = "500 20px 'DM Sans', sans-serif";
-  ctx.fillText(config.signatory2Title || DEFAULT_CONFIG.signatory2Title, canvas.width / 2 + 380, sigY + 55);
+    ctx.fillStyle = "#166534";
+    ctx.font = "bold 12px 'JetBrains Mono', monospace";
+    ctx.fillText("✍️ DIGITALLY SIGNED", sig2X, sigY + 32);
 
-  // Center Official Seal (Optional)
-  if (config.showDigitalSeal) {
-    drawDigitalSeal(ctx, canvas.width / 2, sigY + 10, 52, goldColor);
+    ctx.fillStyle = subtitleColor;
+    ctx.font = "500 20px 'DM Sans', sans-serif";
+    ctx.fillText(config.signatory2Title || DEFAULT_CONFIG.signatory2Title, sig2X, sigY + 55);
+  }
+
+  // Draw Center Official Seal (if enabled)
+  if (showSeal) {
+    drawDigitalSeal(ctx, sealX, sigY + 10, 52, goldColor);
   }
 
   // 9. QR Verification Footer
