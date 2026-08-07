@@ -33,6 +33,8 @@ export function SaturdayAttendancePanel() {
   // 1. Fetch Sessions
   const sessions = useQuery({
     queryKey: ["club-sessions"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -50,6 +52,8 @@ export function SaturdayAttendancePanel() {
   // 1b. Fetch Active Batches defined by Admin
   const activeBatchesQuery = useQuery({
     queryKey: ["active-batches-list"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -79,6 +83,8 @@ export function SaturdayAttendancePanel() {
   // 2. Fetch Members / Students
   const members = useQuery({
     queryKey: ["saturday-members"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -96,6 +102,8 @@ export function SaturdayAttendancePanel() {
   // 2b. Fetch Admin User IDs to exclude admins from student attendance sheet
   const adminUsersQuery = useQuery({
     queryKey: ["saturday-admin-user-ids"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       try {
         const { data } = await supabase
@@ -118,6 +126,8 @@ export function SaturdayAttendancePanel() {
   const attendance = useQuery({
     queryKey: ["session-attendance", activeSessionId],
     enabled: Boolean(activeSessionId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase

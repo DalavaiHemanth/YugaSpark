@@ -35,6 +35,8 @@ function LeaderboardPage() {
 
   const hackathons = useQuery({
     queryKey: ["hackathons"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")

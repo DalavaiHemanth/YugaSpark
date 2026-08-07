@@ -54,10 +54,12 @@ function NoticesPage() {
   // 1. Fetch Notices
   const notices = useQuery({
     queryKey: ["notices-list"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notices")
-        .select("*")
+        .select("id,title,body,kind,link,is_pinned,priority,options,expires_at,created_at")
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
@@ -68,8 +70,12 @@ function NoticesPage() {
   // 2. Fetch Poll Votes
   const votes = useQuery({
     queryKey: ["poll-votes"],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("poll_votes").select("*");
+      const { data, error } = await supabase
+        .from("poll_votes")
+        .select("id,notice_id,user_id,option_index");
       if (error) throw new Error(error.message);
       return data ?? [];
     },
@@ -78,9 +84,13 @@ function NoticesPage() {
   // 3. Fetch Emoji Reactions
   const reactions = useQuery({
     queryKey: ["notice-reactions"],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.from("notice_reactions" as any).select("*");
+        const { data, error } = await supabase
+          .from("notice_reactions" as any)
+          .select("id,notice_id,user_id,emoji");
         if (error) return [];
         return (data ?? []) as Array<{ id: string; notice_id: string; user_id: string; emoji: string }>;
       } catch {
@@ -92,6 +102,8 @@ function NoticesPage() {
   // 4. Fetch Comments
   const comments = useQuery({
     queryKey: ["notice-comments"],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase

@@ -30,6 +30,8 @@ export function MailPanel() {
 
   const members = useQuery({
     queryKey: ["mail-members"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -42,6 +44,8 @@ export function MailPanel() {
 
   const hackathons = useQuery({
     queryKey: ["mail-hackathons"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
@@ -55,6 +59,8 @@ export function MailPanel() {
   const registrations = useQuery({
     queryKey: ["mail-regs", hid],
     enabled: audience === "hackathon" && Boolean(hid),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("registrations")
@@ -89,6 +95,8 @@ export function MailPanel() {
 
   const settings = useQuery({
     queryKey: ["email-settings"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("app_settings")

@@ -41,10 +41,12 @@ function SquadsPage() {
 
   const hackathons = useQuery({
     queryKey: ["hackathons"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
-        .select("*")
+        .select("id,title,event_date,team_min,team_max,registration_open,mode")
         .order("event_date", { ascending: true });
       if (error) throw new Error(error.message);
       return data;
@@ -56,6 +58,8 @@ function SquadsPage() {
 
   const names = useQuery({
     queryKey: ["member-names"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_member_names");
       if (error) throw new Error(error.message);
@@ -66,6 +70,8 @@ function SquadsPage() {
   const squads = useQuery({
     queryKey: ["squads", activeId],
     enabled: Boolean(activeId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("squads")

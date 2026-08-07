@@ -63,6 +63,8 @@ export function InsightsPanel() {
 
   const hackathons = useQuery({
     queryKey: ["insight-hackathons"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
@@ -75,6 +77,8 @@ export function InsightsPanel() {
 
   const counts = useQuery({
     queryKey: ["insight-counts"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const [members, regs, results, squads] = await Promise.all([
         supabase.from("profiles").select("id,profile_completed,is_active,created_at"),
@@ -93,6 +97,8 @@ export function InsightsPanel() {
 
   const board = useQuery({
     queryKey: ["insight-board", hid],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_leaderboard",
