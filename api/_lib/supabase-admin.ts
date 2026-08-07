@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export function getSupabaseAdmin() {
+// Singleton: reuse the same client (and its connection) across serverless invocations
+let _adminClient: SupabaseClient | null = null;
+
+export function getSupabaseAdmin(): SupabaseClient {
+  if (_adminClient) return _adminClient;
+
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
   if (!url || !key) {
@@ -8,7 +14,10 @@ export function getSupabaseAdmin() {
       `Missing env vars: ${[!url && "SUPABASE_URL", !key && "SUPABASE_SERVICE_ROLE_KEY"].filter(Boolean).join(", ")}`,
     );
   }
-  return createClient(url, key, {
+
+  _adminClient = createClient(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
   });
+
+  return _adminClient;
 }
