@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: CertificateConfig = {
   signatory1Title: "Principal, RGMCET",
   signatory2Name: "Dr. K. Subba Reddy",
   signatory2Title: "Faculty Convener & HOD, CSE",
-  collegeLogoUrl: "/rgmcet_logo.ico",
+  collegeLogoUrl: "/rgmcet_logo.png",
   clubLogoUrl: "/yugaspark_logo.png",
   showRegNo: true,
   showDigitalSeal: true,
