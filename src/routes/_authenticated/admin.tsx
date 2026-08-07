@@ -43,6 +43,7 @@ import {
   ShieldMinus,
   ShieldCheck,
   FileSpreadsheet,
+  QrCode,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
