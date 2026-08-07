@@ -104,7 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       if (!active) return;
       setSession(s);
-      void load(s?.user?.id).then(() => setLoading(false));
+      // Always force-refresh on auth state change to avoid stale cache race
+      void load(s?.user?.id, true).then(() => setLoading(false));
     });
     void supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
