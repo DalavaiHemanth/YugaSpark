@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { QrCode, UserCheck, X, Search, CameraOff, RefreshCw, Upload, Image as ImageIcon } from "lucide-react";
+import { QrCode, UserCheck, X, Search, CameraOff, RefreshCw, Upload, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,9 @@ type FoundStudent = {
   photo_url: string | null;
 };
 
+// Last-marked flash shown for 2s after auto-mark
+type FlashStudent = FoundStudent & { pts: number };
+
 export function QrScannerModal(props: QrScannerModalProps) {
   return <QrScannerModalInner {...props} />;
 }
@@ -33,7 +36,8 @@ function QrScannerModalInner({
   onClose,
   onSuccess,
 }: QrScannerModalProps) {
-  const [student, setStudent] = useState<FoundStudent | null>(null);
+  const [student, setStudent] = useState<FoundStudent | null>(null);       // manual confirm mode
+  const [flash, setFlash] = useState<FlashStudent | null>(null);           // auto-mark success flash
   const [manualInput, setManualInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -41,42 +45,121 @@ function QrScannerModalInner({
   const [scanningImage, setScanningImage] = useState(false);
   const scannerInstanceRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Prevents re-scanning the same QR code repeatedly while auto-marking is in flight
+  const lastScannedRef = useRef<string>("");
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-function triggerScanFeedback() {
-  // 1. Haptic Vibration (for mobile devices)
-  if (typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator) {
+  function triggerScanFeedback(success = true) {
+    if (typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(success ? [80, 40, 80] : [200]);
+      } catch { /* ignore */ }
+    }
     try {
-      navigator.vibrate([100, 50, 100]);
-    } catch {
-      // ignore
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(success ? 880 : 400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(success ? 1200 : 300, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.12);
+    } catch { /* ignore */ }
+  }
+
+  /** Core attendance writer — shared by both auto-scan and manual confirm paths. */
+  async function markAttendance(target: FoundStudent): Promise<boolean> {
+    try {
+      const { error: sessionErr } = await supabase.from("session_attendance" as any).upsert(
+        {
+          session_id: hackathonId,
+          user_id: target.id,
+          status: "present",
+          scanned_at: new Date().toISOString(),
+        },
+        { onConflict: "session_id,user_id" },
+      );
+
+      if (sessionErr) {
+        const { error } = await supabase.from("hackathon_results").upsert(
+          { hackathon_id: hackathonId, user_id: target.id, attended: true, points: 10 },
+          { onConflict: "hackathon_id,user_id" },
+        );
+        if (error) throw new Error(error.message);
+      }
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to mark attendance");
+      return false;
     }
   }
 
-  // 2. High-tech Audio Beep via Web Audio API
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+  /** Called when a QR code is decoded by the camera. Auto-marks without confirmation. */
+  async function handleQrScan(decodedText: string) {
+    // Debounce — same QR within 3s is ignored
+    if (decodedText === lastScannedRef.current) return;
+    lastScannedRef.current = decodedText;
 
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.12);
+    // Reset debounce key after 3 seconds
+    setTimeout(() => {
+      if (lastScannedRef.current === decodedText) lastScannedRef.current = "";
+    }, 3000);
 
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+    let searchKey = decodedText.trim();
+    if (!searchKey) return;
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    if (searchKey.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(searchKey);
+        if (parsed.id) searchKey = parsed.id;
+        else if (parsed.reg) searchKey = parsed.reg;
+      } catch { /* ignore */ }
+    }
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.12);
-  } catch {
-    // ignore
+    setBusy(true);
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchKey);
+      let query = supabase.from("profiles").select("id, full_name, email, registration_number, year, photo_url");
+      query = isUuid
+        ? query.or(`id.eq.${searchKey},registration_number.ilike.${searchKey},email.ilike.${searchKey}`)
+        : query.or(`registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
+
+      const { data, error } = await query.limit(1).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) {
+        triggerScanFeedback(false);
+        toast.error(`No student found for scanned QR`);
+        return;
+      }
+
+      // Auto-mark immediately
+      setMarking(true);
+      const ok = await markAttendance(data);
+      setMarking(false);
+
+      if (ok) {
+        triggerScanFeedback(true);
+        // Show flash card for 2.5 seconds then auto-clear
+        setFlash({ ...data, pts: 10 });
+        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = setTimeout(() => setFlash(null), 2500);
+        if (onSuccess) onSuccess();
+      }
+    } catch (err) {
+      triggerScanFeedback(false);
+      toast.error(err instanceof Error ? err.message : "Scan failed");
+    } finally {
+      setBusy(false);
+    }
   }
-}
 
+  /** Called from manual search — shows confirmation card before marking. */
   async function lookupUser(term: string) {
     let searchKey = term.trim();
     if (!searchKey) return;
@@ -86,27 +169,18 @@ function triggerScanFeedback() {
         const parsed = JSON.parse(searchKey);
         if (parsed.id) searchKey = parsed.id;
         else if (parsed.reg) searchKey = parsed.reg;
-      } catch {
-        // ignore parse error
-      }
+      } catch { /* ignore */ }
     }
 
     setBusy(true);
     try {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchKey);
-
-      let query = supabase
-        .from("profiles")
-        .select("id, full_name, email, registration_number, year, photo_url");
-
-      if (isUuid) {
-        query = query.or(`id.eq.${searchKey},registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
-      } else {
-        query = query.or(`registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
-      }
+      let query = supabase.from("profiles").select("id, full_name, email, registration_number, year, photo_url");
+      query = isUuid
+        ? query.or(`id.eq.${searchKey},registration_number.ilike.${searchKey},email.ilike.${searchKey}`)
+        : query.or(`registration_number.ilike.${searchKey},email.ilike.${searchKey}`);
 
       const { data, error } = await query.limit(1).maybeSingle();
-
       if (error) throw new Error(error.message);
       if (!data) {
         toast.error(`No student found matching "${term}"`);
@@ -115,12 +189,27 @@ function triggerScanFeedback() {
       }
 
       setStudent(data);
-      triggerScanFeedback();
+      triggerScanFeedback(true);
       toast.success(`Student found: ${data.full_name || data.email}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Manual confirmation path (used only for manual search results). */
+  async function confirmMarkAttendance() {
+    if (!student) return;
+    setMarking(true);
+    const ok = await markAttendance(student);
+    setMarking(false);
+    if (ok) {
+      triggerScanFeedback(true);
+      toast.success(`Attendance marked for ${student.full_name || student.email} (+10 pts)`);
+      setStudent(null);
+      setManualInput("");
+      if (onSuccess) onSuccess();
     }
   }
 
@@ -132,13 +221,8 @@ function triggerScanFeedback() {
 
       const { Html5Qrcode } = await import("html5-qrcode");
 
-      // Clean up previous scanner if any
       if (scannerInstanceRef.current) {
-        try {
-          await scannerInstanceRef.current.clear();
-        } catch {
-          // ignore
-        }
+        try { await scannerInstanceRef.current.clear(); } catch { /* ignore */ }
       }
 
       const html5QrCode = new Html5Qrcode("qr-reader");
@@ -147,9 +231,7 @@ function triggerScanFeedback() {
       await html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decodedText: string) => {
-          void lookupUser(decodedText);
-        },
+        (decodedText: string) => { void handleQrScan(decodedText); },
         () => {}
       );
     } catch (err) {
@@ -160,13 +242,12 @@ function triggerScanFeedback() {
 
   useEffect(() => {
     let isMounted = true;
-    const timer = setTimeout(() => {
-      if (isMounted) void startCamera();
-    }, 250);
+    const timer = setTimeout(() => { if (isMounted) void startCamera(); }, 250);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       if (scannerInstanceRef.current) {
         try {
           const scanner = scannerInstanceRef.current;
@@ -176,9 +257,7 @@ function triggerScanFeedback() {
           } else {
             scanner.clear().catch(() => undefined);
           }
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
       }
     };
   }, []);
@@ -186,59 +265,18 @@ function triggerScanFeedback() {
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setScanningImage(true);
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
       const html5QrCode = new Html5Qrcode("qr-file-temp");
       const result = await html5QrCode.scanFile(file, true);
-      if (result) {
-        await lookupUser(result);
-      }
+      if (result) await handleQrScan(result);
       html5QrCode.clear().catch(() => undefined);
-    } catch (err) {
+    } catch {
       toast.error("Could not detect a valid QR code in the uploaded image");
     } finally {
       setScanningImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
-  async function markAttendance() {
-    if (!student) return;
-    setMarking(true);
-    try {
-      const { error: sessionErr } = await supabase.from("session_attendance" as any).upsert(
-        {
-          session_id: hackathonId,
-          user_id: student.id,
-          status: "present",
-          scanned_at: new Date().toISOString(),
-        },
-        { onConflict: "session_id,user_id" },
-      );
-
-      if (sessionErr) {
-        const { error } = await supabase.from("hackathon_results").upsert(
-          {
-            hackathon_id: hackathonId,
-            user_id: student.id,
-            attended: true,
-            points: 10,
-          },
-          { onConflict: "hackathon_id,user_id" },
-        );
-        if (error) throw new Error(error.message);
-      }
-
-      triggerScanFeedback();
-      toast.success(`Attendance marked for ${student.full_name || student.email} (+10 pts)`);
-      setStudent(null);
-      if (onSuccess) onSuccess();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to mark attendance");
-    } finally {
-      setMarking(false);
     }
   }
 
@@ -263,9 +301,19 @@ function triggerScanFeedback() {
         {/* Hidden temp div for file scan */}
         <div id="qr-file-temp" className="hidden" />
 
-        {/* Camera Feed / Fallback Options */}
+        {/* Camera Feed */}
         <div className="overflow-hidden rounded-xl border border-border bg-black/40 p-2 min-h-[220px] flex items-center justify-center relative">
           <div id="qr-reader" className="w-full text-center" />
+
+          {/* Marking overlay — shown while auto-marking is in progress */}
+          {(busy || marking) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+              <div className="flex flex-col items-center gap-2 text-white text-sm">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Marking…</span>
+              </div>
+            </div>
+          )}
 
           {cameraError ? (
             <div className="p-6 text-center text-xs text-muted-foreground space-y-3">
@@ -321,7 +369,24 @@ function triggerScanFeedback() {
           onChange={(e) => void handleFileUpload(e)}
         />
 
-        {/* Manual Roll Number / Email Search input */}
+        {/* Auto-mark success flash (QR scan path) */}
+        {flash ? (
+          <div className="rounded-xl border border-green-500/50 bg-green-500/10 p-4 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <CheckCircle2 className="h-8 w-8 text-green-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-bold text-sm text-foreground truncate">
+                {flash.full_name || "Student"}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground truncate">{flash.email}</p>
+              <p className="text-xs text-green-400 font-semibold mt-0.5">✓ Attendance marked +{flash.pts} pts</p>
+            </div>
+            <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+              {flash.registration_number || "–"}
+            </Badge>
+          </div>
+        ) : null}
+
+        {/* Manual Roll Number / Email Search */}
         <div className="space-y-2 pt-1">
           <Label className="text-xs text-muted-foreground font-normal">
             Or type student Roll Number / Email manually:
@@ -345,7 +410,7 @@ function triggerScanFeedback() {
           </form>
         </div>
 
-        {/* Found Student Confirmation Card */}
+        {/* Manual confirm card (only shown for typed search results) */}
         {student ? (
           <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -359,9 +424,7 @@ function triggerScanFeedback() {
                     Reg: {student.registration_number || "N/A"}
                   </Badge>
                   {student.year ? (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {student.year}
-                    </Badge>
+                    <Badge variant="secondary" className="text-[10px]">{student.year}</Badge>
                   ) : null}
                 </div>
               </div>
@@ -372,12 +435,12 @@ function triggerScanFeedback() {
                 size="sm"
                 className="w-full gap-1.5"
                 disabled={marking}
-                onClick={() => void markAttendance()}
+                onClick={() => void confirmMarkAttendance()}
               >
                 <UserCheck className="h-4 w-4" />
                 {marking ? "Marking…" : "Confirm & Mark Attendance (+10 pts)"}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setStudent(null)}>
+              <Button size="sm" variant="ghost" onClick={() => { setStudent(null); setManualInput(""); }}>
                 Cancel
               </Button>
             </div>
