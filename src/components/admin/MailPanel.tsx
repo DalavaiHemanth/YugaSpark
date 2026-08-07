@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerFn } from "@tanstack/react-start";
+
 import { sendClubEmail } from "@/lib/email.functions";
 import { SenderSettings } from "@/components/admin/SenderSettings";
 import { TemplatePreview } from "@/components/admin/TemplatePreview";
@@ -17,7 +17,7 @@ type Audience = "all" | "complete" | "pending" | "hackathon";
 
 export function MailPanel() {
   const queryClient = useQueryClient();
-  const send = useServerFn(sendClubEmail);
+  const send = sendClubEmail;
   const [sending, setSending] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
   const [hid, setHid] = useState("");

@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 
 // 1. Copy dist/client contents to root dist if present
 if (fs.existsSync("dist/client")) {
@@ -29,6 +28,10 @@ const html = `<!DOCTYPE html>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap" />
+    <script>
+      window.$_TSR = window.$_TSR || {};
+      window.__TSR__ = window.__TSR__ || {};
+    </script>
     ${cssTags}
   </head>
   <body>
@@ -42,4 +45,4 @@ if (fs.existsSync("dist/client")) {
   fs.writeFileSync("dist/client/index.html", html);
 }
 
-console.log("✅ Postbuild successfully generated production index.html with compiled JS entry:", jsFile);
+console.log("✅ Postbuild successfully generated production index.html with window.$_TSR and compiled JS entry:", jsFile);
