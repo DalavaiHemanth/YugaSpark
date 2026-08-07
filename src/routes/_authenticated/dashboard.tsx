@@ -64,6 +64,8 @@ function Dashboard() {
 
   const hackathons = useQuery({
     queryKey: ["hackathons"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
@@ -77,6 +79,8 @@ function Dashboard() {
   const registrations = useQuery({
     queryKey: ["registrations", user?.id],
     enabled: Boolean(user?.id),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("registrations")
@@ -90,6 +94,8 @@ function Dashboard() {
   const myResults = useQuery({
     queryKey: ["my-results", user?.id],
     enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathon_results")
@@ -103,6 +109,8 @@ function Dashboard() {
   const mySaturdayAttendance = useQuery({
     queryKey: ["my-saturday-attendance", user?.id],
     enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("session_attendance" as any)
@@ -116,12 +124,14 @@ function Dashboard() {
   const mySessionDetails = useQuery({
     queryKey: ["my-detailed-attendance-history", user?.id, profile?.batch],
     enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       try {
         const [{ data: sessionsData }, { data: attendanceData }] = await Promise.all([
           supabase
             .from("club_sessions" as any)
-            .select("*")
+            .select("id, title, session_date, batch_semester, topic")
             .order("session_date", { ascending: false }),
           supabase
             .from("session_attendance" as any)
