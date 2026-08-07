@@ -185,33 +185,37 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.fill();
   });
 
-  // 3. Render Top Logos (College Logo Left, Yuga Spark Logo Right)
-  const logoSize = 105;
+  // 3. Render Top Logos (College Logo Left, Yuga Spark Logo Right) - Increased Size
+  const logoSize = 165;
+  const logoY = 155;
+  const leftX = 185;
+  const rightX = canvas.width - 185;
+
   if (collegeImg) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(160, 145, logoSize / 2, 0, Math.PI * 2);
+    ctx.arc(leftX, logoY, logoSize / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(collegeImg, 160 - logoSize / 2, 145 - logoSize / 2, logoSize, logoSize);
+    ctx.drawImage(collegeImg, leftX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize);
     ctx.restore();
     ctx.beginPath();
-    ctx.arc(160, 145, logoSize / 2, 0, Math.PI * 2);
+    ctx.arc(leftX, logoY, logoSize / 2, 0, Math.PI * 2);
     ctx.strokeStyle = goldColor;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3.5;
     ctx.stroke();
   }
 
   if (clubImg) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(canvas.width - 160, 145, logoSize / 2, 0, Math.PI * 2);
+    ctx.arc(rightX, logoY, logoSize / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(clubImg, canvas.width - 160 - logoSize / 2, 145 - logoSize / 2, logoSize, logoSize);
+    ctx.drawImage(clubImg, rightX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize);
     ctx.restore();
     ctx.beginPath();
-    ctx.arc(canvas.width - 160, 145, logoSize / 2, 0, Math.PI * 2);
+    ctx.arc(rightX, logoY, logoSize / 2, 0, Math.PI * 2);
     ctx.strokeStyle = goldColor;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3.5;
     ctx.stroke();
   }
 
