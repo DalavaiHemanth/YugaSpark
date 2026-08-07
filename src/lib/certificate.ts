@@ -33,9 +33,9 @@ const DEFAULT_CONFIG: CertificateConfig = {
   clubName: "YUGA SPARK HACKATHON CLUB",
   signatory1Name: "Dr. T. Jayachandra Prasad",
   signatory1Title: "Principal, RGMCET",
-  signatory2Name: "Faculty Convener",
-  signatory2Title: "Head of Department, CSE",
-  collegeLogoUrl: "/rgmcet_logo.ico",
+  signatory2Name: "Dr. K. Subba Reddy",
+  signatory2Title: "Faculty Convener & HOD, CSE",
+  collegeLogoUrl: "/rgmcet_logo.png",
   clubLogoUrl: "/yugaspark_logo.png",
   showRegNo: true,
   showDigitalSeal: true,
@@ -53,7 +53,13 @@ export async function fetchCertificateConfig(): Promise<CertificateConfig> {
       .maybeSingle();
 
     if (data?.value) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(data.value) };
+      const parsed = JSON.parse(data.value);
+      // Clean up legacy defaults if present
+      if (parsed.signatory1Name === "Jaya Krushna & Hemanth") {
+        parsed.signatory1Name = DEFAULT_CONFIG.signatory1Name;
+        parsed.signatory1Title = DEFAULT_CONFIG.signatory1Title;
+      }
+      return { ...DEFAULT_CONFIG, ...parsed };
     }
   } catch {
     // fallback
@@ -61,7 +67,7 @@ export async function fetchCertificateConfig(): Promise<CertificateConfig> {
   return DEFAULT_CONFIG;
 }
 
-/** Helper to load an image URL as an HTMLImageElement */
+/** Helper to load an image URL as an HTMLImageElement safely */
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     if (!url) return resolve(null);
@@ -73,15 +79,66 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Draws Official Digital Verification Seal */
+/** Vector Fallback RGMCET Crest Seal */
+function drawVectorCollegeLogo(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, primaryColor: string, goldColor: string) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = primaryColor;
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = goldColor;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius - 8, 0, Math.PI * 2);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 24px 'Space Grotesk', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("RGMCET", x, y - 6);
+
+  ctx.font = "bold 11px 'JetBrains Mono', monospace";
+  ctx.fillStyle = goldColor;
+  ctx.fillText("ESTD 1995", x, y + 16);
+  ctx.restore();
+}
+
+/** Vector Fallback Yuga Spark Club Logo */
+function drawVectorClubLogo(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, goldColor: string) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#0f172a";
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = goldColor;
+  ctx.stroke();
+
+  ctx.fillStyle = goldColor;
+  ctx.font = "bold 32px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("⚡", x, y - 6);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 10px 'JetBrains Mono', monospace";
+  ctx.fillText("YUGA SPARK", x, y + 18);
+  ctx.restore();
+}
+
+/** Draws Official Digital Verification Starburst Seal */
 function drawDigitalSeal(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, goldColor: string) {
   ctx.save();
-  // Starburst seal outline
   ctx.beginPath();
-  const numPoints = 24;
+  const numPoints = 28;
   for (let i = 0; i < numPoints; i++) {
     const angle = (i * Math.PI) / (numPoints / 2);
-    const r = i % 2 === 0 ? radius : radius - 6;
+    const r = i % 2 === 0 ? radius : radius - 7;
     const px = x + r * Math.cos(angle);
     const py = y + r * Math.sin(angle);
     if (i === 0) ctx.moveTo(px, py);
@@ -91,7 +148,6 @@ function drawDigitalSeal(ctx: CanvasRenderingContext2D, x: number, y: number, ra
   ctx.fillStyle = goldColor;
   ctx.fill();
 
-  // Inner ring
   ctx.beginPath();
   ctx.arc(x, y, radius - 12, 0, Math.PI * 2);
   ctx.fillStyle = "#ffffff";
@@ -105,7 +161,7 @@ function drawDigitalSeal(ctx: CanvasRenderingContext2D, x: number, y: number, ra
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("OFFICIAL", x, y - 10);
-  ctx.fillText("SEAL", x, y + 6);
+  ctx.fillText("SEAL", x, y + 5);
 
   ctx.fillStyle = goldColor;
   ctx.font = "bold 10px 'JetBrains Mono', monospace";
@@ -113,14 +169,30 @@ function drawDigitalSeal(ctx: CanvasRenderingContext2D, x: number, y: number, ra
   ctx.restore();
 }
 
+/** Draws realistic cursive digital signature graphic */
+function drawCursiveSignature(ctx: CanvasRenderingContext2D, x: number, y: number, name: string) {
+  ctx.save();
+  ctx.font = "italic 38px 'Brush Script MT', 'Dancing Script', 'Georgia', cursive";
+  ctx.fillStyle = "#0f172a";
+  ctx.textAlign = "center";
+  ctx.fillText(name, x, y);
+  ctx.restore();
+}
+
 /** Draws an official RGMCET college certificate on a canvas and triggers a PNG download. */
 export async function downloadCertificate(input: CertificateInput, customConfig?: CertificateConfig) {
   const config = customConfig ?? DEFAULT_CONFIG;
 
+  // Enforce removal of legacy club lead names
+  if (config.signatory1Name === "Jaya Krushna & Hemanth") {
+    config.signatory1Name = DEFAULT_CONFIG.signatory1Name;
+    config.signatory1Title = DEFAULT_CONFIG.signatory1Title;
+  }
+
   // Load logo images in parallel
   const [collegeImg, clubImg, sig1Img, sig2Img] = await Promise.all([
-    loadImage(config.collegeLogoUrl || DEFAULT_CONFIG.collegeLogoUrl),
-    loadImage(config.clubLogoUrl || DEFAULT_CONFIG.clubLogoUrl),
+    loadImage(config.collegeLogoUrl),
+    loadImage(config.clubLogoUrl),
     config.signatory1ImgUrl ? loadImage(config.signatory1ImgUrl) : Promise.resolve(null),
     config.signatory2ImgUrl ? loadImage(config.signatory2ImgUrl) : Promise.resolve(null),
   ]);
@@ -161,11 +233,11 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
 
   // 2. Double Filigree Outer Frame
   ctx.strokeStyle = frameBorderColor;
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 9;
   ctx.strokeRect(35, 35, canvas.width - 70, canvas.height - 70);
 
   ctx.strokeStyle = goldColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
   ctx.strokeRect(48, 48, canvas.width - 96, canvas.height - 96);
 
   ctx.strokeStyle = frameBorderColor;
@@ -180,18 +252,18 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     [canvas.width - 65, canvas.height - 65],
   ].forEach(([cx, cy]) => {
     ctx.beginPath();
-    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
     ctx.fillStyle = goldColor;
     ctx.fill();
   });
 
-  // 3. Render Top Logos (College Logo Left, Yuga Spark Logo Right) - Increased Size
-  const logoSize = 165;
+  // 3. Render Top Logos (College Logo Left, Yuga Spark Logo Right) - PROMINENT 170px SIZE
+  const logoSize = 170;
   const logoY = 155;
   const leftX = 185;
   const rightX = canvas.width - 185;
 
-  if (collegeImg) {
+  if (collegeImg && collegeImg.width > 0) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(leftX, logoY, logoSize / 2, 0, Math.PI * 2);
@@ -203,9 +275,12 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.strokeStyle = goldColor;
     ctx.lineWidth = 3.5;
     ctx.stroke();
+  } else {
+    // Vector Fallback if image failed
+    drawVectorCollegeLogo(ctx, leftX, logoY, logoSize / 2, primaryColor, goldColor);
   }
 
-  if (clubImg) {
+  if (clubImg && clubImg.width > 0) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(rightX, logoY, logoSize / 2, 0, Math.PI * 2);
@@ -217,6 +292,9 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.strokeStyle = goldColor;
     ctx.lineWidth = 3.5;
     ctx.stroke();
+  } else {
+    // Vector Fallback if image failed
+    drawVectorClubLogo(ctx, rightX, logoY, logoSize / 2, goldColor);
   }
 
   // 4. College Name Header
@@ -244,7 +322,7 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
   // 5. Main Certificate Title
   const won = input.placement !== null && input.placement <= 3;
   ctx.fillStyle = primaryColor;
-  ctx.font = "bold 66px 'Space Grotesk', serif";
+  ctx.font = "bold 68px 'Space Grotesk', serif";
   ctx.fillText(won ? "CERTIFICATE OF ACHIEVEMENT" : "CERTIFICATE OF PARTICIPATION", canvas.width / 2, 300);
 
   // 6. Recipient Line
@@ -294,15 +372,17 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
   ctx.font = "400 24px 'DM Sans', sans-serif";
   ctx.fillText(`Organized by RGMCET Hackathon Club on ${input.date}`, canvas.width / 2, currentY);
 
-  // 8. Official Digital Signatures & Authorities (NO CLUB LEAD SIGN!)
+  // 8. Official Digital Signatures & Authorities (NO CLUB LEADS!)
   const sigY = 940;
 
-  // Render Custom Signature Image 1 if provided
+  // Left Signatory (Principal / Authority)
   if (sig1Img) {
     ctx.drawImage(sig1Img, canvas.width / 2 - 460, sigY - 65, 160, 50);
+  } else {
+    // Draw elegant cursive signature graphic
+    drawCursiveSignature(ctx, canvas.width / 2 - 380, sigY - 30, config.signatory1Name);
   }
 
-  // Left Signatory (Principal / Authority)
   ctx.font = "bold 24px 'Space Grotesk', sans-serif";
   ctx.fillStyle = textColor;
   ctx.fillText(config.signatory1Name || DEFAULT_CONFIG.signatory1Name, canvas.width / 2 - 380, sigY);
@@ -315,19 +395,21 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
   ctx.stroke();
 
   ctx.fillStyle = "#166534";
-  ctx.font = "bold 13px 'JetBrains Mono', monospace";
-  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 - 380, sigY - 25);
+  ctx.font = "bold 12px 'JetBrains Mono', monospace";
+  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 - 380, sigY + 32);
 
   ctx.fillStyle = subtitleColor;
   ctx.font = "500 20px 'DM Sans', sans-serif";
-  ctx.fillText(config.signatory1Title || DEFAULT_CONFIG.signatory1Title, canvas.width / 2 - 380, sigY + 45);
-
-  // Render Custom Signature Image 2 if provided
-  if (sig2Img) {
-    ctx.drawImage(sig2Img, canvas.width / 2 + 300, sigY - 65, 160, 50);
-  }
+  ctx.fillText(config.signatory1Title || DEFAULT_CONFIG.signatory1Title, canvas.width / 2 - 380, sigY + 55);
 
   // Right Signatory (Faculty Convener / HOD)
+  if (sig2Img) {
+    ctx.drawImage(sig2Img, canvas.width / 2 + 300, sigY - 65, 160, 50);
+  } else {
+    // Draw elegant cursive signature graphic
+    drawCursiveSignature(ctx, canvas.width / 2 + 380, sigY - 30, config.signatory2Name);
+  }
+
   ctx.font = "bold 24px 'Space Grotesk', sans-serif";
   ctx.fillStyle = textColor;
   ctx.fillText(config.signatory2Name || DEFAULT_CONFIG.signatory2Name, canvas.width / 2 + 380, sigY);
@@ -340,12 +422,12 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
   ctx.stroke();
 
   ctx.fillStyle = "#166534";
-  ctx.font = "bold 13px 'JetBrains Mono', monospace";
-  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 + 380, sigY - 25);
+  ctx.font = "bold 12px 'JetBrains Mono', monospace";
+  ctx.fillText("✍️ DIGITALLY SIGNED", canvas.width / 2 + 380, sigY + 32);
 
   ctx.fillStyle = subtitleColor;
   ctx.font = "500 20px 'DM Sans', sans-serif";
-  ctx.fillText(config.signatory2Title || DEFAULT_CONFIG.signatory2Title, canvas.width / 2 + 380, sigY + 45);
+  ctx.fillText(config.signatory2Title || DEFAULT_CONFIG.signatory2Title, canvas.width / 2 + 380, sigY + 55);
 
   // Center Official Seal (Optional)
   if (config.showDigitalSeal) {
@@ -357,7 +439,7 @@ export async function downloadCertificate(input: CertificateInput, customConfig?
     ctx.textAlign = "center";
     ctx.fillStyle = primaryColor;
     ctx.font = "bold 14px 'JetBrains Mono', monospace";
-    ctx.fillText("OFFICIAL RGMCET COLLEGE DIGITAL CERTIFICATE · VERIFIED DATABASE RECORD", canvas.width / 2, 1055);
+    ctx.fillText("OFFICIAL RGMCET COLLEGE DIGITAL CERTIFICATE · VERIFIED DATABASE RECORD", canvas.width / 2, 1060);
   }
 
   // Trigger Download
