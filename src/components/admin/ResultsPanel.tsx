@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, QrCode } from "lucide-react";
+import { Download, QrCode, FileSpreadsheet, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { announceResults, emailAttendees } from "@/lib/notify";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
+import { ResultsBulkImportModal } from "@/components/admin/ResultsBulkImportModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,6 +177,8 @@ export function ResultsPanel() {
     void results.refetch();
   }
 
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       {showQrScanner && selectedHackathon ? (
@@ -202,8 +205,7 @@ export function ResultsPanel() {
           </SelectContent>
         </Select>
         <p className="mt-3 text-sm text-muted-foreground">
-          Mark attendance, set placement (1–3 counts as a win) and award points. Certificates unlock
-          automatically for attended members; upload an official file to override the generated one.
+          Mark attendance, set placement (1–3 counts as a win) and award points. Upload a CSV spreadsheet containing Registration Numbers and Prizes/Ranks to bulk import results. Certificates unlock automatically for all attended members.
         </p>
         {hid ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -215,6 +217,15 @@ export function ResultsPanel() {
               <QrCode className="h-4 w-4" />
               Scan QR Attendance
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
+              onClick={() => setImportModalOpen(true)}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Upload Results CSV (.xlsx, .csv)
+            </Button>
             <Button size="sm" onClick={announce} disabled={announcing}>
               {announcing ? "Announcing…" : "Announce results to members"}
             </Button>
@@ -224,6 +235,14 @@ export function ResultsPanel() {
             </Button>
           </div>
         ) : null}
+
+        <ResultsBulkImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          hackathonId={hid}
+          hackathonTitle={selectedHackathon?.title || "Hackathon"}
+          onSuccess={() => void results.refetch()}
+        />
       </div>
 
       {hid ? (
