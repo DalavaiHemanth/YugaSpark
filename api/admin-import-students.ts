@@ -52,23 +52,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let updated = 0;
     const failed: string[] = [];
 
-    for (const student of students) {
-      let email = student.email;
-      if (!email.includes("@")) email = `${email}@rgmcet.edu.in`;
+    // Normalize emails once upfront
+    const normalizedStudents = students.map((s) => ({
+      ...s,
+      email: s.email.includes("@") ? s.email : `${s.email}@rgmcet.edu.in`,
+    }));
 
-      await supabaseAdmin.from("allowed_emails").upsert({ email }, { onConflict: "email" });
+    // ✅ BATCH: upsert all allowed_emails in one DB call instead of one per student
+    await supabaseAdmin
+      .from("allowed_emails")
+      .upsert(
+        normalizedStudents.map((s) => ({ email: s.email })),
+        { onConflict: "email" }
+      );
 
+    for (const student of normalizedStudents) {
       const { data: existing } = await supabaseAdmin
         .from("profiles")
         .select("id")
-        .eq("email", email)
+        .eq("email", student.email)
         .maybeSingle();
 
       let userId = existing?.id ?? null;
 
       if (!userId) {
         const { data: authData, error } = await supabaseAdmin.auth.admin.createUser({
-          email,
+          email: student.email,
           password: STUDENT_DEFAULT_PASSWORD,
           email_confirm: true,
         });
@@ -77,14 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           userId = authData.user.id;
           created += 1;
         } else if (error?.message.toLowerCase().includes("already")) {
-          const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
-          const found = userList?.users?.find(
-            (u) => u.email?.toLowerCase() === email,
-          );
-          userId = found?.id ?? null;
+          // ✅ FIX: getUserByEmail instead of listUsers() which fetches ALL users
+          const { data: found } = await supabaseAdmin.auth.admin.getUserByEmail(student.email);
+          userId = found?.user?.id ?? null;
           updated += 1;
         } else {
-          failed.push(email);
+          failed.push(student.email);
           continue;
         }
       } else {
