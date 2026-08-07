@@ -4,6 +4,11 @@
   "description": "The official hackathon club platform for RGMCET students to find squads, join events, and earn credentials.",
   "icons": [
     {
+      "src": "/yugaspark_logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
