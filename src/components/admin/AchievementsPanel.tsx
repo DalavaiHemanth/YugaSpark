@@ -107,13 +107,21 @@ export function AchievementsPanel() {
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("club_years" as any)
-        .select("*")
-        .order("display_order", { ascending: true })
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as ClubYear[];
+      try {
+        const { data, error } = await supabase
+          .from("club_years" as any)
+          .select("*")
+          .order("display_order", { ascending: true })
+          .order("created_at", { ascending: false });
+        if (error) {
+          console.error("club_years query error:", error.message);
+          return [];
+        }
+        return (data ?? []) as ClubYear[];
+      } catch (err) {
+        console.error("club_years exception:", err);
+        return [];
+      }
     },
   });
 
@@ -128,14 +136,22 @@ export function AchievementsPanel() {
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("club_achievements" as any)
-        .select("*")
-        .eq("year_id", activeYearId!)
-        .order("display_order", { ascending: true })
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as ClubAchievement[];
+      try {
+        const { data, error } = await supabase
+          .from("club_achievements" as any)
+          .select("*")
+          .eq("year_id", activeYearId!)
+          .order("display_order", { ascending: true })
+          .order("created_at", { ascending: false });
+        if (error) {
+          console.error("club_achievements query error:", error.message);
+          return [];
+        }
+        return (data ?? []) as ClubAchievement[];
+      } catch (err) {
+        console.error("club_achievements exception:", err);
+        return [];
+      }
     },
   });
 
