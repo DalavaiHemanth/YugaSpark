@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarCheck, QrCode, Download, Plus, CheckCircle2, XCircle, Search } from "lucide-react";
+import { CalendarCheck, QrCode, Download, Plus, CheckCircle2, XCircle, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function SaturdayAttendancePanel() {
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -29,6 +37,74 @@ export function SaturdayAttendancePanel() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [batchSemester, setBatchSemester] = useState("All Batches");
   const [topic, setTopic] = useState("");
+
+  // Edit & Delete Session State
+  const [editingSession, setEditingSession] = useState<any | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editBatch, setEditBatch] = useState("All Batches");
+  const [editTopic, setEditTopic] = useState("");
+  const [updatingSession, setUpdatingSession] = useState(false);
+
+  function openEditModal(session: any) {
+    setEditingSession(session);
+    setEditTitle(session.title || "");
+    setEditDate(session.session_date || new Date().toISOString().slice(0, 10));
+    setEditBatch(session.batch_semester || "All Batches");
+    setEditTopic(session.topic || "");
+  }
+
+  async function handleUpdateSession(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSession || !editTitle.trim()) return;
+    setUpdatingSession(true);
+    try {
+      const { error } = await supabase
+        .from("club_sessions" as any)
+        .update({
+          title: editTitle.trim(),
+          session_date: editDate,
+          batch_semester: editBatch,
+          topic: editTopic.trim() || null,
+        })
+        .eq("id", editingSession.id);
+
+      if (error) throw new Error(error.message);
+
+      toast.success("Session updated successfully!");
+      setEditingSession(null);
+      void sessions.refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update session");
+    } finally {
+      setUpdatingSession(false);
+    }
+  }
+
+  async function handleDeleteSession(session: any) {
+    if (!session) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete session "${session.title}" and all its attendance records? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("club_sessions" as any)
+        .delete()
+        .eq("id", session.id);
+
+      if (error) throw new Error(error.message);
+
+      toast.success("Session deleted");
+      setSelectedSessionId("");
+      void sessions.refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete session");
+    }
+  }
 
   // 1. Fetch Sessions
   const sessions = useQuery({
@@ -512,9 +588,25 @@ export function SaturdayAttendancePanel() {
             {/* Active Session Info & Stats Header */}
             <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-display text-lg font-bold">{activeSession.title}</h3>
                   <Badge variant="secondary">{activeSession.batch_semester}</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={() => openEditModal(activeSession)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Edit Session
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={() => void handleDeleteSession(activeSession)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Date: {new Date(activeSession.session_date).toDateString()} {activeSession.topic ? `· Topic: ${activeSession.topic}` : ""}
@@ -645,6 +737,110 @@ export function SaturdayAttendancePanel() {
           </p>
         )}
       </div>
+
+      {/* Edit Session Modal */}
+      <Dialog
+        open={Boolean(editingSession)}
+        onOpenChange={(v) => {
+          if (!v && !updatingSession) setEditingSession(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Pencil className="h-4 w-4 text-primary" />
+              Edit Session Details
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Modify the title, date, target batch, or notes for this attendance register.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateSession} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-session-title" className="text-xs font-medium">
+                Session Title <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="edit-session-title"
+                required
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="e.g. Session #5 - Web Bootcamp"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-session-date" className="text-xs font-medium">
+                Session Date <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="edit-session-date"
+                type="date"
+                required
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-session-batch" className="text-xs font-medium">Target Batch</Label>
+              <Select value={editBatch} onValueChange={setEditBatch}>
+                <SelectTrigger id="edit-session-batch" className="h-9 text-xs bg-background">
+                  <SelectValue placeholder="Select Target Batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Batches">All Batches</SelectItem>
+                  {activeBatchesQuery.data && activeBatchesQuery.data.length > 0 ? (
+                    activeBatchesQuery.data.map((b) => (
+                      <SelectItem key={b.id} value={b.name}>
+                        Batch: {b.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    availableBatches.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        Batch: {b}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-session-topic" className="text-xs font-medium">Topic / Notes (Optional)</Label>
+              <Input
+                id="edit-session-topic"
+                value={editTopic}
+                onChange={(e) => setEditTopic(e.target.value)}
+                placeholder="e.g. React & Supabase"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingSession(null)}
+                disabled={updatingSession}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={updatingSession || !editTitle.trim()}>
+                {updatingSession ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
