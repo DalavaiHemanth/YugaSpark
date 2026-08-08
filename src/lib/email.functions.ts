@@ -30,6 +30,8 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 type SendInput = {
   subject: string;
   body: string;
+  bannerUrl?: string | null;
+  attachments?: { filename: string; content: string; contentType?: string }[];
   kind?: string;
   hackathonId?: string | null;
   recipients: { email: string; name?: string | null }[];

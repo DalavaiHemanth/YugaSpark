@@ -7,6 +7,8 @@ import { checkRateLimit, LIMITS } from "./_lib/rate-limit.js";
 type SendInput = {
   subject: string;
   body: string;
+  bannerUrl?: string | null;
+  attachments?: { filename: string; content: string; contentType?: string }[];
   kind?: string;
   hackathonId?: string | null;
   recipients: { email: string; name?: string | null }[];
@@ -41,6 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validate
     const subject = String(body?.subject ?? "").trim();
     const msgBody = String(body?.body ?? "").trim();
+    const bannerUrl = body?.bannerUrl ? String(body.bannerUrl).trim() : null;
+    const attachments = Array.isArray(body?.attachments) ? body.attachments : undefined;
+
     if (subject.length < 3 || subject.length > 200)
       return sendError(res, "Subject must be 3–200 characters");
     if (msgBody.length < 5 || msgBody.length > 20000)
@@ -85,6 +90,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       replyTo,
       subject,
       body: msgBody,
+      bannerUrl,
+      attachments,
       recipients,
     });
 

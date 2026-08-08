@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 type Props = {
   subject: string;
   body: string;
+  bannerUrl?: string | null;
   sample: { email: string; name?: string | null } | null;
   onApplyTemplate: (t: EmailTemplate) => void;
   onReplaceContent: (next: { subject: string; body: string }) => void;
@@ -21,7 +22,7 @@ type Props = {
 const RECIPIENT_TOKENS = new Set(["name", "first_name", "email"]);
 
 /** Lets admins load announcement/results templates, fill variables and preview the real email. */
-export function TemplatePreview({ subject, body, sample, onApplyTemplate, onReplaceContent }: Props) {
+export function TemplatePreview({ subject, body, bannerUrl, sample, onApplyTemplate, onReplaceContent }: Props) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
 
@@ -47,7 +48,7 @@ export function TemplatePreview({ subject, body, sample, onApplyTemplate, onRepl
   const recipient = sample ?? { email: "member@rgmcet.edu.in", name: "Sample Member" };
   const previewSubject = personalize(fillCustom(subject || "(no subject yet)"), recipient);
   const previewBody = personalize(fillCustom(body || "Write your message to see it here."), recipient);
-  const html = renderHtml(previewSubject, previewBody);
+  const html = renderHtml(previewSubject, previewBody, { bannerUrl });
 
   function applyValues() {
     onReplaceContent({ subject: fillCustom(subject), body: fillCustom(body) });
