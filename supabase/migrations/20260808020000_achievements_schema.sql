@@ -87,3 +87,28 @@ CREATE POLICY "Admin write access for club_achievements"
       WHERE user_roles.user_id = auth.uid() AND user_roles.role IN ('admin', 'super_admin')
     )
   );
+
+-- 5. Storage RLS Policies for photos bucket (Enables Admin file uploads)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('photos', 'photos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public select for photos bucket" ON storage.objects;
+CREATE POLICY "Public select for photos bucket"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'photos');
+
+DROP POLICY IF EXISTS "Authenticated upload for photos bucket" ON storage.objects;
+CREATE POLICY "Authenticated upload for photos bucket"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'photos');
+
+DROP POLICY IF EXISTS "Authenticated update for photos bucket" ON storage.objects;
+CREATE POLICY "Authenticated update for photos bucket"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'photos');
+
+DROP POLICY IF EXISTS "Authenticated delete for photos bucket" ON storage.objects;
+CREATE POLICY "Authenticated delete for photos bucket"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'photos');
