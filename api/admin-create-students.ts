@@ -44,14 +44,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const email of emails) {
       await supabaseAdmin.from("allowed_emails").upsert({ email }, { onConflict: "email" });
-      const { error } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authData, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: STUDENT_DEFAULT_PASSWORD,
         email_confirm: true,
       });
-      if (!error) created += 1;
-      else if (error.message.toLowerCase().includes("already")) existed += 1;
-      else failed.push(email);
+
+      let userId = authData?.user?.id ?? null;
+      if (!userId && error?.message.toLowerCase().includes("already")) {
+        const { data: found } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+        userId = found?.user?.id ?? null;
+        existed += 1;
+      } else if (!error && userId) {
+        created += 1;
+      } else {
+        failed.push(email);
+        continue;
+      }
+
+      if (userId) {
+        await supabaseAdmin.from("user_roles").upsert(
+          { user_id: userId, role: "student" },
+          { onConflict: "user_id,role", ignoreDuplicates: true }
+        );
+        await supabaseAdmin.from("profiles").upsert(
+          { id: userId, email, is_active: true },
+          { onConflict: "id" }
+        );
+      }
     }
 
     await supabaseAdmin.rpc("write_audit", {

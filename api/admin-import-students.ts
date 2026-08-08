@@ -106,15 +106,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (userId) {
-        const updatePayload: Record<string, unknown> = {};
-        if (student.full_name) updatePayload.full_name = student.full_name;
-        if (student.registration_number)
-          updatePayload.registration_number = student.registration_number;
-        if (student.year) updatePayload.year = student.year;
-        if (student.batch) updatePayload.batch = student.batch;
-        updatePayload.profile_completed = true;
+        // Ensure student role exists
+        await supabaseAdmin.from("user_roles").upsert(
+          { user_id: userId, role: "student" },
+          { onConflict: "user_id,role", ignoreDuplicates: true }
+        );
 
-        await supabaseAdmin.from("profiles").update(updatePayload).eq("id", userId);
+        // ✅ CRITICAL FIX: Always UPSERT into profiles (never update)
+        // If a profile row was missing (e.g. trigger didn't fire or pre-existing auth user),
+        // update() silently modifies 0 rows leaving the user invisible in the admin panel.
+        // upsert() guarantees the profile row is inserted and visible.
+        const profilePayload: Record<string, unknown> = {
+          id: userId,
+          email: student.email,
+          profile_completed: true,
+          is_active: true,
+        };
+        if (student.full_name) profilePayload.full_name = student.full_name;
+        if (student.registration_number)
+          profilePayload.registration_number = student.registration_number;
+        if (student.year) profilePayload.year = student.year;
+        if (student.batch) profilePayload.batch = student.batch;
+
+        await supabaseAdmin
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "id" });
       }
     }
 

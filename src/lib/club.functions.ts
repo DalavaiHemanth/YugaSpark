@@ -86,3 +86,8 @@ export async function adminDeleteUser(opts: {
 }): Promise<{ ok: boolean }> {
   return post("/api/admin-delete-user", opts.data);
 }
+
+/** Admin: backfill/sync missing profiles for existing auth users. */
+export async function adminSyncProfiles(): Promise<{ ok: boolean; synced: number; totalAuthUsers: number }> {
+  return post("/api/admin-sync-profiles");
+}

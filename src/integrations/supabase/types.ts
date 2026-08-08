@@ -337,6 +337,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          batch: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -351,6 +352,7 @@ export type Database = {
           year: string | null
         }
         Insert: {
+          batch?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -365,6 +367,7 @@ export type Database = {
           year?: string | null
         }
         Update: {
+          batch?: string | null
           created_at?: string
           email?: string
           full_name?: string | null

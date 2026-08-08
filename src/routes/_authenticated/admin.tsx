@@ -11,6 +11,7 @@ import {
   adminDeleteUser,
   adminSetPassword,
   adminSetRole,
+  adminSyncProfiles,
   STUDENT_DEFAULT_PASSWORD,
 } from "@/lib/club.functions";
 import { openUserFile, downloadUserFile, signedUrl } from "@/lib/storage";
@@ -45,6 +46,7 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   QrCode,
+  RefreshCw,
 } from "lucide-react";
 import { Stethoscope } from "lucide-react";
 import { QrScannerModal } from "@/components/admin/QrScannerModal";
@@ -294,6 +296,24 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkPwd, setBulkPwd] = useState(STUDENT_DEFAULT_PASSWORD);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  async function handleSyncProfiles() {
+    setSyncing(true);
+    try {
+      const res = await adminSyncProfiles();
+      if (res.synced > 0) {
+        toast.success(`Synced ${res.synced} missing profile(s) out of ${res.totalAuthUsers} accounts!`);
+      } else {
+        toast.info(`All ${res.totalAuthUsers} member accounts are already in sync.`);
+      }
+      await members.refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   useEffect(() => {
     if (initialQuery) {
@@ -309,7 +329,7 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, registration_number, year, batch, is_active, created_at, avatar_url, profile_completed, personal_email")
+        .select("id, full_name, email, registration_number, year, batch, is_active, created_at, photo_url, resume_url, profile_completed, personal_email")
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data;
@@ -562,6 +582,43 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
     if (ok > 0) toast.success(`Password reset for ${ok} member${ok > 1 ? "s" : ""}`);
     if (failed.length > 0) toast.error(`Failed for ${failed.length}: ${failed.slice(0, 3).join(", ")}`);
   }
+
+  async function bulkDeleteSelected() {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Delete ${selectedRows.length} member(s) permanently? This action cannot be undone.`)) return;
+    setBulkBusy(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const m of selectedRows) {
+      try {
+        await adminDeleteUser({ data: { userId: m.id } });
+        ok += 1;
+      } catch {
+        failed.push(m.email);
+      }
+    }
+    setBulkBusy(false);
+    if (ok > 0) toast.success(`Deleted ${ok} member${ok > 1 ? "s" : ""}`);
+    if (failed.length > 0) toast.error(`Failed to delete ${failed.length}: ${failed.slice(0, 3).join(", ")}`);
+    setSelected([]);
+    await members.refetch();
+  }
+
+  async function bulkAssignBatch(batchName: string) {
+    if (selectedRows.length === 0 || !batchName) return;
+    setBulkBusy(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ batch: batchName })
+      .in("id", selectedRows.map((m) => m.id));
+    setBulkBusy(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Assigned batch '${batchName}' to ${selectedRows.length} member(s)`);
+      setSelected([]);
+      await members.refetch();
+    }
+  }
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
@@ -629,6 +686,16 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
               <span className="font-display text-sm font-bold">Members</span>
             </label>
             <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                disabled={syncing}
+                onClick={() => void handleSyncProfiles()}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 text-primary ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Syncing…" : "Sync Accounts"}
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -855,12 +922,22 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
             />
           ))}
           {visible.length === 0 ? (
-            <li className="p-5">
+            <li className="p-5 text-center">
               <EmptyState
                 icon={Users}
                 title="No members match"
-                description="Try clearing your search or adding members using the form on the left."
+                description="Try clearing your search or adding members using the form on the left. If members were imported previously, click Sync Accounts below to recover their profiles."
               />
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 gap-1.5 text-xs mx-auto"
+                disabled={syncing}
+                onClick={() => void handleSyncProfiles()}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 text-primary ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Syncing accounts…" : "Sync Missing Accounts"}
+              </Button>
             </li>
           ) : null}
         </ul>
@@ -1138,7 +1215,7 @@ function MemberRow({
                 className="gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium"
                 onClick={async () => {
                   try {
-                    await adminSetRole({ data: { userId: member.id, role: "admin", action: "add" } });
+                    await adminSetRole({ userId: member.id, role: "admin", action: "add" });
                     toast.success(`Promoted ${member.email} to Admin`);
                     onChanged();
                   } catch (err) {
@@ -1157,7 +1234,7 @@ function MemberRow({
                 onClick={async () => {
                   if (!confirm(`Demote ${member.email} from Admin back to Student?`)) return;
                   try {
-                    await adminSetRole({ data: { userId: member.id, role: "admin", action: "remove" } });
+                    await adminSetRole({ userId: member.id, role: "admin", action: "remove" });
                     toast.success(`Demoted ${member.email} to Student`);
                     onChanged();
                   } catch (err) {

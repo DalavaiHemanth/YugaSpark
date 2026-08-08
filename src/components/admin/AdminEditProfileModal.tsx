@@ -23,7 +23,7 @@ type Member = {
   full_name: string | null;
   registration_number: string | null;
   year: string | null;
-  batch: string | null;
+  batch?: string | null;
   personal_email: string | null;
   photo_url?: string | null;
   resume_url?: string | null;
