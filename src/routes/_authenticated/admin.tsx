@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ADMIN_NAV, SECTION_KEYS, type SectionKey } from "@/lib/admin-nav";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Component, type ReactNode } from "react";
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ import {
   Megaphone,
   Inbox,
   Lock,
+  AlertCircle,
   KeyRound,
   Trash2,
   UserCheck,
@@ -223,12 +224,59 @@ function AdminWorkspace() {
           </div>
         </header>
         <div key={`${current.key}-${query ?? ""}`} className="rise mt-4 sm:mt-5">
-          {RENDERERS[current.key](query)}
+          <AdminSectionErrorBoundary sectionKey={current.key}>
+            {RENDERERS[current.key](query)}
+          </AdminSectionErrorBoundary>
         </div>
       </section>
     </div>
     </>
   );
+}
+
+class AdminSectionErrorBoundary extends Component<
+  { children: ReactNode; sectionKey: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; sectionKey: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidUpdate(prevProps: { sectionKey: string }) {
+    if (prevProps.sectionKey !== this.props.sectionKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="surface p-6 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3">
+          <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+            <AlertCircle className="h-4 w-4" />
+            Failed to load section content
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {this.state.error?.message || "An unexpected error occurred while loading this section."}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="text-xs"
+          >
+            Try Again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function MembersPanel({ initialQuery }: { initialQuery?: string | undefined }) {
