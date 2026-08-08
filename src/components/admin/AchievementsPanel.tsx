@@ -81,9 +81,25 @@ export function AchievementsPanel() {
   const [itemDesc, setItemDesc] = useState("");
   const [personName, setPersonName] = useState("");
   const [personRole, setPersonRole] = useState("");
-  const [itemImageUrl, setItemImageUrl] = useState("");
-
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileUpload(file: File, setUrl: (url: string) => void) {
+    try {
+      setUploading(true);
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `achievements/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("photos").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("photos").getPublicUrl(path);
+      setUrl(data.publicUrl);
+      toast.success("Image uploaded to Storage CDN!");
+    } catch (err) {
+      toast.error("Failed to upload image: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+    }
+  }
 
   // 1. Fetch Years
   const yearsQuery = useQuery({
@@ -533,13 +549,30 @@ export function AchievementsPanel() {
             </div>
 
             <div>
-              <label className="font-semibold block mb-1">Cover Image URL (Optional)</label>
-              <Input
-                value={coverImageUrl}
-                onChange={(e) => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="text-xs"
-              />
+              <label className="font-semibold block mb-1">Cover Image URL (Paste URL or Upload File)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={coverImageUrl}
+                  onChange={(e) => setCoverImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="text-xs flex-1"
+                />
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+                    <Upload className="h-3.5 w-3.5" /> Upload
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleFileUpload(f, setCoverImageUrl);
+                    }}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
@@ -547,7 +580,7 @@ export function AchievementsPanel() {
             <Button variant="outline" size="sm" onClick={() => setYearModalOpen(false)}>
               Cancel
             </Button>
-            <Button size="sm" disabled={saving} onClick={saveYear}>
+            <Button size="sm" disabled={saving || uploading} onClick={saveYear}>
               {saving ? "Saving..." : "Save Year"}
             </Button>
           </DialogFooter>
@@ -629,13 +662,30 @@ export function AchievementsPanel() {
             </div>
 
             <div>
-              <label className="font-semibold block mb-1">Image URL (Unsplash or CDN link)</label>
-              <Input
-                value={itemImageUrl}
-                onChange={(e) => setItemImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="text-xs"
-              />
+              <label className="font-semibold block mb-1">Image (Paste CDN URL or Upload File)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={itemImageUrl}
+                  onChange={(e) => setItemImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="text-xs flex-1"
+                />
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+                    <Upload className="h-3.5 w-3.5" /> Upload
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleFileUpload(f, setItemImageUrl);
+                    }}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
