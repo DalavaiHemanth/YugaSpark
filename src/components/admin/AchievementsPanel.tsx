@@ -81,6 +81,7 @@ export function AchievementsPanel() {
   const [itemDesc, setItemDesc] = useState("");
   const [personName, setPersonName] = useState("");
   const [personRole, setPersonRole] = useState("");
+  const [itemImageUrl, setItemImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
