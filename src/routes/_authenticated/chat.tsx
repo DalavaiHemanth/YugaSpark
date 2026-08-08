@@ -32,11 +32,12 @@ function ChatPage() {
   const messages = useQuery({
     queryKey: ["messages", user?.id],
     enabled: Boolean(user?.id),
-    refetchInterval: 8000,
+    staleTime: 5000,
+    refetchInterval: 12000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select("id, student_id, sender_role, body, created_at")
         .eq("student_id", user!.id)
         .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);

@@ -33,6 +33,8 @@ export function AuditPanel() {
 
   const logs = useQuery({
     queryKey: ["audit-logs", entity],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")

@@ -30,16 +30,20 @@ function CertificatesPage() {
 
   const certConfig = useQuery({
     queryKey: ["certificate-config"],
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: fetchCertificateConfig,
   });
 
   const results = useQuery({
     queryKey: ["my-results", user?.id],
     enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathon_results")
-        .select("*, hackathons(title,event_date,certificate_mode)")
+        .select("id, hackathon_id, placement, points, attended, certificate_url, hackathons(title,event_date,certificate_mode)")
         .eq("user_id", user!.id)
         .eq("attended", true);
       if (error) throw new Error(error.message);

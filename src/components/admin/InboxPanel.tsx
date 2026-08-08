@@ -40,11 +40,11 @@ export function InboxPanel() {
 
   const messages = useQuery({
     queryKey: ["admin-messages"],
-    refetchInterval: 10000,
+    refetchInterval: 15000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select("id, student_id, sender_role, body, is_read, created_at")
         .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);
       return data;
@@ -53,6 +53,8 @@ export function InboxPanel() {
 
   const members = useQuery({
     queryKey: ["admin-members"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id,full_name,email");
       if (error) throw new Error(error.message);

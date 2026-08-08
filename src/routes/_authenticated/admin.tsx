@@ -304,10 +304,12 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
 
   const members = useQuery({
     queryKey: ["all-profiles"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, full_name, email, registration_number, year, batch, is_active, created_at, avatar_url, profile_completed, personal_email")
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data;
@@ -373,6 +375,8 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
 
   const allUserRolesQuery = useQuery({
     queryKey: ["all-user-roles-map"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -404,6 +408,8 @@ function MembersPanelInner({ initialQuery }: { initialQuery?: string | undefined
 
   const batchesQuery = useQuery({
     queryKey: ["admin-members-batches"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -1295,10 +1301,12 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
 
   const hackathons = useQuery({
     queryKey: ["admin-hackathons"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
-        .select("*")
+        .select("id, title, description, event_date, registration_open, mode, team_min, team_max, banner_url, registration_deadline, certificate_mode, created_at")
         .order("event_date", { ascending: false });
       if (error) throw new Error(error.message);
       return data;
@@ -1732,6 +1740,8 @@ function HackathonRow({ hackathon: h, onChanged, onScanQr }: HackathonRowProps) 
 function AccessPanelInner() {
   const setting = useQuery({
     queryKey: ["access-mode"],
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("app_settings")

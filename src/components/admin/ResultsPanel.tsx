@@ -32,6 +32,8 @@ export function ResultsPanel() {
 
   const hackathons = useQuery({
     queryKey: ["hackathons-admin-results"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathons")
@@ -63,6 +65,8 @@ export function ResultsPanel() {
 
   const members = useQuery({
     queryKey: ["admin-members"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -76,6 +80,8 @@ export function ResultsPanel() {
   const results = useQuery({
     queryKey: ["results", hid],
     enabled: Boolean(hid),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hackathon_results")

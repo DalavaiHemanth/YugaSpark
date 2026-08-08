@@ -14,6 +14,8 @@ export function EmailLogPanel() {
 
   const logs = useQuery({
     queryKey: ["email-logs"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_logs")

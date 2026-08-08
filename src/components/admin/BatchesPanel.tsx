@@ -61,11 +61,13 @@ export function BatchesPanel() {
   // Fetch all batches
   const batches = useQuery({
     queryKey: ["admin-batches"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
           .from("batches" as any)
-          .select("*")
+          .select("id, name, is_active, notes, created_at")
           .order("name", { ascending: true });
         if (error) return [];
         return (data ?? []) as BatchItem[];
@@ -78,11 +80,13 @@ export function BatchesPanel() {
   // Fetch all profiles for student mapping
   const profilesQuery = useQuery({
     queryKey: ["all-batch-profiles"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("*")
+          .select("id, full_name, email, registration_number, batch, year, is_active")
           .order("full_name");
         if (error) return [];
         return (data ?? []) as ProfileMember[];
@@ -95,6 +99,8 @@ export function BatchesPanel() {
   // Fetch Admin user IDs to exclude admins from student batch rosters
   const adminUsersQuery = useQuery({
     queryKey: ["batches-admin-user-ids"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
     queryFn: async () => {
       try {
         const { data } = await supabase
