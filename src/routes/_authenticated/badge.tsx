@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
+import { Camera, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
 import { AppShell } from "@/components/AppShell";
@@ -30,7 +31,7 @@ function BadgePage() {
   const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile?.photo_url) return;
     const payload = JSON.stringify({
       club: "Yuga Spark",
       id: user.id,
@@ -45,7 +46,9 @@ function BadgePage() {
   }, [user, profile]);
 
   useEffect(() => {
-    void signedUrl("photos", profile?.photo_url).then(setPhoto);
+    if (profile?.photo_url) {
+      void signedUrl("photos", profile.photo_url).then(setPhoto);
+    }
   }, [profile?.photo_url]);
 
   async function download() {
@@ -61,13 +64,25 @@ function BadgePage() {
     }
   }
 
-  if (!profile?.profile_completed) {
+  if (!profile?.profile_completed || !profile?.photo_url) {
     return (
       <AppShell>
-        <h1 className="text-3xl font-bold">Badge locked</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Complete your profile first and your badge is generated instantly.
-        </p>
+        <div className="mx-auto max-w-md rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-4 my-8 shadow-sm">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-500/10 text-amber-600">
+            <Camera className="h-6 w-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="text-xl font-bold font-display">Profile Photo Required for Member Badge</h1>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              To prevent proxy attendance and ensure official club verification, your scannable QR badge requires a verified profile photo.
+            </p>
+          </div>
+          <Button size="sm" asChild className="w-full gap-2 mt-2">
+            <Link to="/profile">
+              <Camera className="h-4 w-4" /> Upload Profile Photo
+            </Link>
+          </Button>
+        </div>
       </AppShell>
     );
   }

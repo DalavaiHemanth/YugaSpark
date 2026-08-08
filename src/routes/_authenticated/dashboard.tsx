@@ -15,6 +15,7 @@ import {
   Clock,
   CalendarCheck,
   CheckCircle2,
+  Camera,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -208,6 +209,21 @@ function Dashboard() {
           )
         }
       />
+
+      {profile && !profile.photo_url ? (
+        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Camera className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-amber-700">Profile Photo Required for Member QR Badge</p>
+              <p className="text-[11px] text-muted-foreground">Upload a profile photo to unlock your official QR code for event check-in and attendance.</p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" asChild className="h-7 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/20">
+            <Link to="/profile">Upload Photo</Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
