@@ -37,12 +37,14 @@ ALTER TABLE public.club_years ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.club_achievements ENABLE ROW LEVEL SECURITY;
 
 -- Public READ access for both anon and authenticated users
+DROP POLICY IF EXISTS "Public select access for club_years" ON public.club_years;
 CREATE POLICY "Public select access for club_years"
   ON public.club_years
   FOR SELECT
   TO public
   USING (true);
 
+DROP POLICY IF EXISTS "Public select access for club_achievements" ON public.club_achievements;
 CREATE POLICY "Public select access for club_achievements"
   ON public.club_achievements
   FOR SELECT
@@ -50,6 +52,7 @@ CREATE POLICY "Public select access for club_achievements"
   USING (true);
 
 -- Admin WRITE access (INSERT, UPDATE, DELETE)
+DROP POLICY IF EXISTS "Admin write access for club_years" ON public.club_years;
 CREATE POLICY "Admin write access for club_years"
   ON public.club_years
   FOR ALL
@@ -67,6 +70,7 @@ CREATE POLICY "Admin write access for club_years"
     )
   );
 
+DROP POLICY IF EXISTS "Admin write access for club_achievements" ON public.club_achievements;
 CREATE POLICY "Admin write access for club_achievements"
   ON public.club_achievements
   FOR ALL
