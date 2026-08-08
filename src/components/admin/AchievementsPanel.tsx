@@ -184,6 +184,7 @@ export function AchievementsPanel() {
 
       setYearModalOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["club-years"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-club-years"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save year");
     } finally {
@@ -199,6 +200,7 @@ export function AchievementsPanel() {
       toast.success("Year deleted");
       if (selectedYearId === id) setSelectedYearId(null);
       void queryClient.invalidateQueries({ queryKey: ["club-years"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-club-years"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete year");
     }
@@ -264,7 +266,8 @@ export function AchievementsPanel() {
       }
 
       setItemModalOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["club-achievements", activeYearId] });
+      void queryClient.invalidateQueries({ queryKey: ["club-achievements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-club-achievements"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save achievement");
     } finally {
@@ -278,7 +281,8 @@ export function AchievementsPanel() {
       const { error } = await supabase.from("club_achievements" as any).delete().eq("id", id);
       if (error) throw new Error(error.message);
       toast.success("Entry removed");
-      void queryClient.invalidateQueries({ queryKey: ["club-achievements", activeYearId] });
+      void queryClient.invalidateQueries({ queryKey: ["club-achievements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-club-achievements"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete entry");
     }

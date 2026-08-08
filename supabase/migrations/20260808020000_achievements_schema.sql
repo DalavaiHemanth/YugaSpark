@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.club_achievements (
 CREATE INDEX IF NOT EXISTS idx_club_years_order ON public.club_years(display_order ASC, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_club_achievements_year_id ON public.club_achievements(year_id);
 CREATE INDEX IF NOT EXISTS idx_club_achievements_kind ON public.club_achievements(kind);
+CREATE INDEX IF NOT EXISTS idx_achievements_year_order ON public.club_achievements(year_id, display_order);
 
 -- 4. Enable Row Level Security (RLS)
 ALTER TABLE public.club_years ENABLE ROW LEVEL SECURITY;
