@@ -57,13 +57,12 @@ function NoticesPage() {
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notices")
+      const { data, error } = await (supabase.from("notices" as any) as any)
         .select("id,title,body,kind,link,is_pinned,priority,options,expires_at,created_at")
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data ?? []) as any[];
     },
   });
 
@@ -329,7 +328,7 @@ function NoticesPage() {
                   {/* Optional Link */}
                   {n.link ? (
                     <a
-                      href={n.link}
+                      href={String(n.link)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"

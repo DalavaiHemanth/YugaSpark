@@ -10,6 +10,7 @@ import {
   QrCode,
   UserCog,
   LogOut,
+  Landmark,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_NAV } from "@/lib/admin-nav";
@@ -37,6 +38,7 @@ const CLUB = [
 const RESOURCES = [
   { to: "/playbook", label: "Playbook", icon: BookOpen },
   { to: "/certificates", label: "Certificates", icon: Award },
+  { to: "/achievements", label: "Club Legacy", icon: Landmark },
   { to: "/notices", label: "Notices", icon: Megaphone },
   { to: "/chat", label: "Ask admin", icon: MessageSquare },
   { to: "/badge", label: "Badge", icon: QrCode },

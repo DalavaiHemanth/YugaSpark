@@ -14,6 +14,7 @@ import {
   Globe,
   CalendarCheck,
   Layers,
+  Landmark,
 } from "lucide-react";
 
 export type SectionKey =
@@ -28,6 +29,7 @@ export type SectionKey =
   | "insights"
   | "playbook"
   | "notices"
+  | "achievements"
   | "inbox"
   | "access"
   | "audit"
@@ -46,6 +48,7 @@ export const SECTION_KEYS: SectionKey[] = [
   "insights",
   "playbook",
   "notices",
+  "achievements",
   "access",
   "audit",
   "checks",
@@ -161,6 +164,13 @@ export const ADMIN_NAV: { group: string; items: SectionMeta[] }[] = [
         icon: Megaphone,
         title: "Notice board",
         description: "Post announcements, outside hackathons, links and polls.",
+      },
+      {
+        key: "achievements",
+        label: "Achievements & Legacy",
+        icon: Landmark,
+        title: "Club Legacy & Achievements",
+        description: "Showcase academic year moments, hackathon wins, gallery and team leads.",
       },
     ],
   },

@@ -10,6 +10,7 @@ import {
   Building2,
   Lock,
   Sparkles,
+  Landmark,
 } from "lucide-react";
 
 const TITLE = "Yuga Spark — RGMCET Hackathon Club Portal";
@@ -47,6 +48,11 @@ function Index() {
           </div>
           <div className="flex items-center gap-2.5">
             <Button asChild size="sm" variant="ghost" className="text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground">
+              <Link to="/achievements">
+                <Landmark className="h-3.5 w-3.5 text-primary" /> Club Legacy
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground">
               <Link to="/auth">
                 <Lock className="h-3.5 w-3.5 text-primary" /> Admin Login
               </Link>
@@ -75,10 +81,15 @@ function Index() {
         </p>
 
         {/* Primary Action Button */}
-        <div className="mt-7 flex items-center justify-center gap-3">
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg" className="font-semibold text-sm gap-2 shadow-lg shadow-primary/20 px-6">
             <Link to="/auth">
               Enter Student Portal <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="font-semibold text-sm gap-2 px-6">
+            <Link to="/achievements">
+              <Landmark className="h-4 w-4 text-primary" /> View Club Legacy
             </Link>
           </Button>
         </div>

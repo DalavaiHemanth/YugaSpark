@@ -72,6 +72,7 @@ import { BatchesPanel } from "@/components/admin/BatchesPanel";
 import { EmailLogPanel } from "@/components/admin/EmailLogPanel";
 import { DomainPanel } from "@/components/admin/DomainPanel";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
+import { AchievementsPanel } from "@/components/admin/AchievementsPanel";
 
 const TITLE = "Admin console — Yuga Spark";
 const DESCRIPTION = "Manage Yuga Spark members, hackathons and club access settings.";
@@ -90,6 +91,7 @@ const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
   insights: () => <InsightsPanel />,
   playbook: () => <ResourcesPanel />,
   notices: () => <NoticesPanel />,
+  achievements: () => <AchievementsPanel />,
   access: () => <AccessPanel />,
   audit: () => <AuditPanel />,
   checks: () => <SystemChecksPanel />,
