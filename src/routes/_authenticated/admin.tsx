@@ -1298,6 +1298,24 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
     banner_url: "",
   });
   const [busy, setBusy] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+
+  async function handleBannerUpload(file: File) {
+    try {
+      setUploadingBanner(true);
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `hackathons/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("photos").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("photos").getPublicUrl(path);
+      setForm((prev) => ({ ...prev, banner_url: data.publicUrl }));
+      toast.success("Hackathon banner uploaded to Storage CDN!");
+    } catch (err) {
+      toast.error("Failed to upload banner: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
 
   const hackathons = useQuery({
     queryKey: ["admin-hackathons"],
@@ -1508,14 +1526,32 @@ function HackathonsPanel({ initialQuery }: { initialQuery?: string | undefined }
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="banner">Banner image URL (optional)</Label>
-          <Input
-            id="banner"
-            type="url"
-            value={form.banner_url}
-            placeholder="https://…"
-            onChange={(e) => setForm({ ...form, banner_url: e.target.value })}
-          />
+          <Label htmlFor="banner">Banner image (Paste URL or Upload File)</Label>
+          <div className="flex gap-2">
+            <Input
+              id="banner"
+              type="url"
+              value={form.banner_url}
+              placeholder="https://…"
+              onChange={(e) => setForm({ ...form, banner_url: e.target.value })}
+              className="flex-1"
+            />
+            <label className="cursor-pointer">
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9">
+                <Upload className="h-3.5 w-3.5" /> {uploadingBanner ? "Uploading…" : "Upload"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingBanner}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleBannerUpload(f);
+                }}
+              />
+            </label>
+          </div>
         </div>
         <Button type="submit" className="w-full" disabled={busy}>
           {busy ? "Publishing…" : "Publish hackathon"}
