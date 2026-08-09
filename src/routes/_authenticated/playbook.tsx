@@ -178,6 +178,15 @@ const ROADMAP_STEPS = [
   },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  session_materials: "📁 Session Slides, Notes & Drive Links",
+  session_recordings: "🎥 Session Video Recordings & Demos",
+  templates: "⚡ Starter Kits & Templates",
+  apis: "🛠️ APIs & Databases",
+  design: "🎨 Figma & Slide Decks",
+  guides: "📘 Hackathon Guides & Playbooks",
+};
+
 function PlaybookPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"resources" | "roadmap" | "snippets">("resources");
@@ -336,7 +345,7 @@ function PlaybookPage() {
             <section key={cat} className="mt-8">
               <h2 className="label-mono text-muted-foreground uppercase text-xs tracking-wider flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                {cat}
+                {CATEGORY_LABELS[cat] || cat}
               </h2>
               <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {list
@@ -486,12 +495,12 @@ function PlaybookPage() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold">URL / Link *</Label>
+              <Label className="text-xs font-semibold">URL / Link (Google Drive / GitHub / Web) *</Label>
               <Input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://github.com/..."
+                placeholder="https://drive.google.com/..."
                 required
               />
             </div>
@@ -502,10 +511,12 @@ function PlaybookPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="templates">Starter Kits & Templates</SelectItem>
-                  <SelectItem value="apis">APIs & Databases</SelectItem>
-                  <SelectItem value="design">Figma & Slide Decks</SelectItem>
-                  <SelectItem value="guides">Hackathon Guides & Playbooks</SelectItem>
+                  <SelectItem value="session_materials">📁 Session Slides, Notes & Drive Links</SelectItem>
+                  <SelectItem value="session_recordings">🎥 Session Video Recordings & Demos</SelectItem>
+                  <SelectItem value="templates">⚡ Starter Kits & Templates</SelectItem>
+                  <SelectItem value="apis">🛠️ APIs & Databases</SelectItem>
+                  <SelectItem value="design">🎨 Figma & Slide Decks</SelectItem>
+                  <SelectItem value="guides">📘 Hackathon Guides & Playbooks</SelectItem>
                 </SelectContent>
               </Select>
             </div>

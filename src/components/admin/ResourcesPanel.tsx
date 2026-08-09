@@ -182,21 +182,21 @@ export function ResourcesPanel() {
               <h3 className="font-display text-lg font-bold">Add Playbook Resource</h3>
             </div>
             <div>
-              <Label className="text-xs">Title</Label>
+              <Label className="text-xs">Resource Title</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. Supabase Auth Boilerplate"
+                placeholder="e.g. Session 3: React & Tailwind Slides"
                 required
               />
             </div>
             <div>
-              <Label className="text-xs">Resource Link (URL)</Label>
+              <Label className="text-xs">Resource Link (Google Drive / GitHub / URL)</Label>
               <Input
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
-                placeholder="https://github.com/..."
+                placeholder="https://drive.google.com/drive/folders/..."
                 required
               />
             </div>
@@ -207,10 +207,12 @@ export function ResourcesPanel() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="templates">Starter Kits & Templates</SelectItem>
-                  <SelectItem value="apis">APIs & Databases</SelectItem>
-                  <SelectItem value="design">Figma & Slide Decks</SelectItem>
-                  <SelectItem value="guides">Hackathon Guides & Playbooks</SelectItem>
+                  <SelectItem value="session_materials">📁 Session Slides, Notes & Drive Links</SelectItem>
+                  <SelectItem value="session_recordings">🎥 Session Video Recordings & Demos</SelectItem>
+                  <SelectItem value="templates">⚡ Starter Kits & Templates</SelectItem>
+                  <SelectItem value="apis">🛠️ APIs & Databases</SelectItem>
+                  <SelectItem value="design">🎨 Figma & Slide Decks</SelectItem>
+                  <SelectItem value="guides">📘 Hackathon Guides & Playbooks</SelectItem>
                 </SelectContent>
               </Select>
             </div>
