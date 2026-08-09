@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
-type Audience = "all" | "complete" | "pending" | "hackathon";
+type Audience = "all" | "complete" | "pending" | "hackathon" | "batch";
 
 type EmailFileAttachment = {
   filename: string;
@@ -40,6 +40,7 @@ export function MailPanel() {
   const [sending, setSending] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
   const [hid, setHid] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState("");
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [subject, setSubject] = useState("");
@@ -57,12 +58,31 @@ export function MailPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,email,personal_email,full_name,profile_completed,is_active")
+        .select("id,email,personal_email,full_name,profile_completed,is_active,batch")
         .order("full_name");
       if (error) throw new Error(error.message);
       return data;
     },
   });
+
+  const batchesQuery = useQuery({
+    queryKey: ["mail-batches"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("batches" as any)
+        .select("name, is_active")
+        .order("name", { ascending: true });
+      return (data as { name: string; is_active: boolean }[]) ?? [];
+    },
+  });
+
+  const batchOptions = useMemo(() => {
+    const dbBatches = (batchesQuery.data ?? []).map((b) => b.name);
+    const profileBatches = (members.data ?? []).map((m) => m.batch).filter(Boolean) as string[];
+    return Array.from(new Set([...dbBatches, ...profileBatches])).sort();
+  }, [batchesQuery.data, members.data]);
 
   const hackathons = useQuery({
     queryKey: ["mail-hackathons"],
@@ -99,12 +119,13 @@ export function MailPanel() {
       if (audience === "complete" && !m.profile_completed) return false;
       if (audience === "pending" && m.profile_completed) return false;
       if (audience === "hackathon" && !(registrations.data ?? []).includes(m.id)) return false;
+      if (audience === "batch" && selectedBatch && m.batch !== selectedBatch) return false;
       if (!term) return true;
-      return [m.email, m.full_name, m.personal_email]
+      return [m.email, m.full_name, m.personal_email, m.batch]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
-  }, [members.data, registrations.data, audience, q]);
+  }, [members.data, registrations.data, audience, selectedBatch, q]);
 
   const selected = visible.filter((m) => picked[m.id]);
   const targets = (selected.length ? selected : visible)
@@ -272,7 +293,7 @@ export function MailPanel() {
           <div className="space-y-3 border-b border-border px-4 py-4 sm:px-5">
             <h2 className="label-mono text-muted-foreground">Audience</h2>
             <div className="flex flex-wrap gap-2">
-              {(["all", "complete", "pending", "hackathon"] as const).map((a) => (
+              {(["all", "complete", "pending", "hackathon", "batch"] as const).map((a) => (
                 <Button
                   key={a}
                   size="sm"
@@ -283,7 +304,7 @@ export function MailPanel() {
                     setPicked({});
                   }}
                 >
-                  {a === "hackathon" ? "By hackathon" : a}
+                  {a === "hackathon" ? "By hackathon" : a === "batch" ? "By batch" : a}
                 </Button>
               ))}
             </div>
@@ -301,7 +322,21 @@ export function MailPanel() {
                 ))}
               </select>
             ) : null}
-            <Input value={q} placeholder="Search members…" onChange={(e) => setQ(e.target.value)} />
+            {audience === "batch" ? (
+              <select
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Select a batch cohort…</option>
+                {batchOptions.map((b) => (
+                  <option key={b} value={b}>
+                    Batch {b}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <Input value={q} placeholder="Search members by name, email, or batch…" onChange={(e) => setQ(e.target.value)} />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
                 {selected.length ? `${selected.length} selected` : `${visible.length} in this list`}
@@ -329,8 +364,15 @@ export function MailPanel() {
                   checked={Boolean(picked[m.id])}
                   onCheckedChange={(v) => setPicked({ ...picked, [m.id]: Boolean(v) })}
                 />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{m.full_name ?? "Unnamed member"}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium">{m.full_name ?? "Unnamed member"}</p>
+                    {m.batch ? (
+                      <span className="rounded bg-secondary/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                        {m.batch}
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="truncate font-mono text-xs text-muted-foreground">
                     {usePersonal && m.personal_email ? m.personal_email : m.email}
                   </p>
