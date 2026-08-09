@@ -209,6 +209,25 @@ function PlaybookPage() {
   const list = resources.data ?? [];
   const categories = Array.from(new Set(list.map((r) => r.category)));
 
+  // Fetch Dynamic Code Snippets from DB
+  const snippetsQuery = useQuery({
+    queryKey: ["code-snippets-public"],
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("code_snippets")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+
+  const snippets = (snippetsQuery.data && snippetsQuery.data.length > 0)
+    ? snippetsQuery.data
+    : BOILERPLATE_SNIPPETS;
+
   function handleCopy(id: string, text: string) {
     void navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -278,7 +297,7 @@ function PlaybookPage() {
             onClick={() => setActiveTab("snippets")}
             className="gap-2 text-xs font-semibold"
           >
-            <Code2 className="h-4 w-4 text-emerald-500" /> Copyable Snippets
+            <Code2 className="h-4 w-4 text-emerald-500" /> Copyable Snippets ({snippets.length})
           </Button>
         </div>
 
@@ -410,7 +429,7 @@ function PlaybookPage() {
       {activeTab === "snippets" ? (
         <div className="mt-8 space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            {BOILERPLATE_SNIPPETS.map((s) => (
+            {snippets.map((s) => (
               <div key={s.id} className="surface p-5 rounded-2xl border border-border space-y-3 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -422,7 +441,7 @@ function PlaybookPage() {
                       {s.category}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{s.description}</p>
+                  {s.description ? <p className="text-xs text-muted-foreground">{s.description}</p> : null}
                 </div>
 
                 <div className="relative group rounded-xl overflow-hidden border border-border bg-black/90 p-4 font-mono text-xs text-emerald-400">

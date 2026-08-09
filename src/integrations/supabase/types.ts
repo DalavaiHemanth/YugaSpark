@@ -139,6 +139,42 @@ export type Database = {
           },
         ]
       }
+      code_snippets: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          language: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hackathon_results: {
         Row: {
           attended: boolean
@@ -419,6 +455,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          status: string
           title: string
           url: string
         }
@@ -428,6 +465,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          status?: string
           title: string
           url: string
         }
@@ -437,6 +475,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          status?: string
           title?: string
           url?: string
         }
