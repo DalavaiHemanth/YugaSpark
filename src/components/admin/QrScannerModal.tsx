@@ -10,6 +10,7 @@ import {
   Upload,
   Image as ImageIcon,
   CheckCircle2,
+  AlertTriangle,
   Zap,
   ZapOff,
   SwitchCamera,
@@ -41,6 +42,12 @@ type FoundStudent = {
 // Last-marked flash shown after auto-mark
 type FlashStudent = FoundStudent & { pts: number; time: string };
 
+type AlreadyScannedStudent = {
+  full_name: string | null;
+  email: string;
+  registration_number: string | null;
+};
+
 export function QrScannerModal(props: QrScannerModalProps) {
   return <QrScannerModalInner {...props} />;
 }
@@ -53,6 +60,7 @@ function QrScannerModalInner({
 }: QrScannerModalProps) {
   const [student, setStudent] = useState<FoundStudent | null>(null); // manual confirm mode
   const [flash, setFlash] = useState<FlashStudent | null>(null); // auto-mark success flash
+  const [alreadyScannedFlash, setAlreadyScannedFlash] = useState<AlreadyScannedStudent | null>(null);
   const [sessionScannedCount, setSessionScannedCount] = useState(0);
   const [recentScans, setRecentScans] = useState<FlashStudent[]>([]);
   const [manualInput, setManualInput] = useState("");
@@ -66,14 +74,58 @@ function QrScannerModalInner({
 
   const scannerInstanceRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Prevents re-scanning the same QR code repeatedly while auto-marking is in flight
+  const scannedUserIdsRef = useRef<Set<string>>(new Set());
   const lastScannedRef = useRef<string>("");
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch already-marked student IDs for this session on modal mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadExistingAttendance() {
+      try {
+        const { data: sessData } = await supabase
+          .from("session_attendance" as any)
+          .select("user_id")
+          .eq("session_id", hackathonId)
+          .eq("status", "present");
+
+        const idSet = new Set<string>();
+        if (sessData && sessData.length > 0) {
+          sessData.forEach((row: any) => {
+            if (row.user_id) idSet.add(row.user_id);
+          });
+        }
+
+        const { data: hData } = await supabase
+          .from("hackathon_results")
+          .select("user_id")
+          .eq("hackathon_id", hackathonId)
+          .eq("attended", true);
+
+        if (hData && hData.length > 0) {
+          hData.forEach((row: any) => {
+            if (row.user_id) idSet.add(row.user_id);
+          });
+        }
+
+        if (isMounted) {
+          scannedUserIdsRef.current = idSet;
+          setSessionScannedCount(idSet.size);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    void loadExistingAttendance();
+    return () => {
+      isMounted = false;
+    };
+  }, [hackathonId]);
 
   function triggerScanFeedback(success = true) {
     if (typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator) {
       try {
-        navigator.vibrate(success ? [80, 40, 80] : [200]);
+        navigator.vibrate(success ? [80, 40, 80] : [200, 100, 200]);
       } catch {
         /* ignore */
       }
@@ -84,15 +136,15 @@ function QrScannerModalInner({
       const ctx = new AudioContextClass();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(success ? 880 : 400, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(success ? 1200 : 300, ctx.currentTime + 0.12);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.type = success ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(success ? 880 : 350, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(success ? 1200 : 250, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.12);
+      osc.stop(ctx.currentTime + 0.15);
     } catch {
       /* ignore */
     }
@@ -127,7 +179,7 @@ function QrScannerModalInner({
 
   /** Called when a QR code is decoded by the camera. Auto-marks without confirmation. */
   async function handleQrScan(decodedText: string) {
-    // Debounce — same QR within 2.5s is ignored
+    // Debounce — same raw QR string within 2.5s is ignored
     if (decodedText === lastScannedRef.current) return;
     lastScannedRef.current = decodedText;
 
@@ -166,16 +218,34 @@ function QrScannerModalInner({
         return;
       }
 
-      // Auto-mark immediately
+      // CHECK IF ALREADY SCANNED / MARKED PRESENT
+      if (scannedUserIdsRef.current.has(data.id)) {
+        triggerScanFeedback(false);
+        setAlreadyScannedFlash({
+          full_name: data.full_name || "Student",
+          email: data.email,
+          registration_number: data.registration_number,
+        });
+        toast.warning(`${data.full_name || data.registration_number || "Student"} is ALREADY marked present!`, {
+          description: "This QR code was previously checked in for this session.",
+        });
+        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = setTimeout(() => setAlreadyScannedFlash(null), 3000);
+        return;
+      }
+
+      // Auto-mark NEW student immediately
       setMarking(true);
       const ok = await markAttendance(data);
       setMarking(false);
 
       if (ok) {
+        scannedUserIdsRef.current.add(data.id);
         triggerScanFeedback(true);
         const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         const flashItem: FlashStudent = { ...data, pts: 10, time: timeStr };
 
+        setAlreadyScannedFlash(null);
         setFlash(flashItem);
         setSessionScannedCount((prev) => prev + 1);
         setRecentScans((prev) => [flashItem, ...prev.slice(0, 4)]);
@@ -225,6 +295,19 @@ function QrScannerModalInner({
         return;
       }
 
+      // Check if already scanned
+      if (scannedUserIdsRef.current.has(data.id)) {
+        triggerScanFeedback(false);
+        setAlreadyScannedFlash({
+          full_name: data.full_name || "Student",
+          email: data.email,
+          registration_number: data.registration_number,
+        });
+        toast.warning(`${data.full_name || data.registration_number} is ALREADY marked present!`);
+        setStudent(null);
+        return;
+      }
+
       setStudent(data);
       triggerScanFeedback(true);
       toast.success(`Student found: ${data.full_name || data.email}`);
@@ -242,6 +325,7 @@ function QrScannerModalInner({
     const ok = await markAttendance(student);
     setMarking(false);
     if (ok) {
+      scannedUserIdsRef.current.add(student.id);
       triggerScanFeedback(true);
       const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       const flashItem: FlashStudent = { ...student, pts: 10, time: timeStr };
@@ -540,8 +624,25 @@ function QrScannerModalInner({
           </div>
         ) : null}
 
+        {/* ALREADY SCANNED / MARKED PRESENT WARNING BANNER */}
+        {alreadyScannedFlash ? (
+          <div className="rounded-xl border border-amber-500/50 bg-amber-500/15 p-3.5 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <AlertTriangle className="h-7 w-7 text-amber-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-bold text-sm text-white sm:text-foreground truncate">
+                {alreadyScannedFlash.full_name || "Student"}
+              </p>
+              <p className="text-xs font-mono text-amber-300 sm:text-muted-foreground truncate">{alreadyScannedFlash.email}</p>
+              <p className="text-xs text-amber-400 font-semibold mt-0.5">⚠️ Already Marked Present for this Session</p>
+            </div>
+            <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-amber-500/40 text-amber-300">
+              {alreadyScannedFlash.registration_number || "–"}
+            </Badge>
+          </div>
+        ) : null}
+
         {/* RECENTLY SCANNED REEL FOR CONTINUOUS SCANNING */}
-        {recentScans.length > 0 && !flash ? (
+        {recentScans.length > 0 && !flash && !alreadyScannedFlash ? (
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] text-slate-400 sm:text-muted-foreground font-semibold px-1">
               <span>Recent Check-ins</span>
