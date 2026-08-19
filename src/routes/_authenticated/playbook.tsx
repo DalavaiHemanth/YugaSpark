@@ -24,6 +24,8 @@ import {
   Eye,
   Download,
   X,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -227,6 +229,80 @@ function PlaybookPage() {
   const [slideImagesInput, setSlideImagesInput] = useState("");
   const [ebookUrlInput, setEbookUrlInput] = useState("");
 
+  // Direct Upload State for Student Modal
+  const [uploadedSlides, setUploadedSlides] = useState<string[]>([]);
+  const [uploadedEbook, setUploadedEbook] = useState<string>("");
+  const [uploadingSlides, setUploadingSlides] = useState(false);
+  const [uploadingEbook, setUploadingEbook] = useState(false);
+
+  // Direct File Upload Handler for Student Slide Images
+  async function handleStudentSlideFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingSlides(true);
+    const newUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file) continue;
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const filePath = `playbook/slides/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        const { error } = await supabase.storage.from("photos").upload(filePath, file, { upsert: true });
+        if (error) {
+          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+          continue;
+        }
+
+        const { data } = supabase.storage.from("photos").getPublicUrl(filePath);
+        if (data?.publicUrl) {
+          newUrls.push(data.publicUrl);
+        }
+      }
+
+      if (newUrls.length > 0) {
+        setUploadedSlides((prev) => [...prev, ...newUrls]);
+        toast.success(`Uploaded ${newUrls.length} slide photo(s)!`);
+      }
+    } catch (err) {
+      toast.error("Slide upload failed");
+    } finally {
+      setUploadingSlides(false);
+      e.target.value = "";
+    }
+  }
+
+  // Direct File Upload Handler for Student eBook PDF
+  async function handleStudentEbookFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingEbook(true);
+    try {
+      const file = files[0];
+      if (!file) return;
+      const ext = file.name.split(".").pop() ?? "pdf";
+      const filePath = `playbook/ebooks/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+      const { error } = await supabase.storage.from("photos").upload(filePath, file, { upsert: true });
+      if (error) throw new Error(error.message);
+
+      const { data } = supabase.storage.from("photos").getPublicUrl(filePath);
+      if (data?.publicUrl) {
+        setUploadedEbook(data.publicUrl);
+        setEbookUrlInput(data.publicUrl);
+        toast.success("eBook PDF uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "PDF upload failed");
+    } finally {
+      setUploadingEbook(false);
+      e.target.value = "";
+    }
+  }
+
   // High performance query caching (staleTime 15 mins, gcTime 60 mins) to protect DB connections
   const resources = useQuery({
     queryKey: ["resources-public"],
@@ -285,10 +361,13 @@ function PlaybookPage() {
 
     setSubmitting(true);
     try {
-      const parsedSlides = slideImagesInput
+      const pastedSlides = slideImagesInput
         .split("\n")
         .map((s) => s.trim())
         .filter((s) => s.length > 0 && s.startsWith("http"));
+
+      const combinedSlides = Array.from(new Set([...uploadedSlides, ...pastedSlides]));
+      const finalEbook = uploadedEbook.trim() || ebookUrlInput.trim() || null;
 
       const { error } = await supabase.from("resources").insert({
         title: title.trim(),
@@ -296,8 +375,8 @@ function PlaybookPage() {
         category,
         description: description.trim() || null,
         status: "pending",
-        slide_images: parsedSlides.length > 0 ? parsedSlides : [],
-        ebook_pdf_url: ebookUrlInput.trim() || null,
+        slide_images: combinedSlides.length > 0 ? combinedSlides : [],
+        ebook_pdf_url: finalEbook,
         created_by: user?.id ?? null,
       });
 
@@ -310,6 +389,8 @@ function PlaybookPage() {
       setDescription("");
       setSlideImagesInput("");
       setEbookUrlInput("");
+      setUploadedSlides([]);
+      setUploadedEbook("");
       setSubmitModalOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed");
@@ -767,31 +848,121 @@ function PlaybookPage() {
               />
             </div>
 
-            {/* Optional Multi-Photo Slides Input */}
-            <div>
-              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Images className="h-3.5 w-3.5 text-primary" /> Multi-Photo Slide Deck URLs (1 URL per line)
+            {/* DIRECT FILE UPLOADER FOR SLIDE IMAGES */}
+            <div className="space-y-2 pt-1 border-t border-border">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Images className="h-3.5 w-3.5 text-primary" /> Slide Images Deck
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">Direct Upload or Paste</span>
               </Label>
+
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2 text-xs text-primary hover:bg-primary/10 transition-colors">
+                    {uploadingSlides ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Uploading Slides…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5" /> Pick / Drag Slide Photos
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleStudentSlideFiles}
+                    disabled={uploadingSlides}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {uploadedSlides.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto py-1">
+                  {uploadedSlides.map((imgUrl, idx) => (
+                    <div key={idx} className="relative h-12 w-12 shrink-0 rounded border border-border group overflow-hidden">
+                      <img src={imgUrl} alt={`Slide ${idx + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setUploadedSlides((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"
+                      >
+                        <X className="h-3.5 w-3.5 text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <Textarea
                 value={slideImagesInput}
                 onChange={(e) => setSlideImagesInput(e.target.value)}
-                rows={2}
-                className="font-mono text-xs"
-                placeholder={`https://images.unsplash.com/photo-1...\nhttps://images.unsplash.com/photo-2...`}
+                rows={1}
+                className="font-mono text-[11px]"
+                placeholder="Or paste external image URLs (1 per line)"
               />
             </div>
 
-            {/* Optional eBook / PDF Link */}
-            <div>
-              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-emerald-500" /> eBook / PDF Attachment Link
+            {/* DIRECT FILE UPLOADER FOR EBOOK PDF */}
+            <div className="space-y-2 pt-1 border-t border-border">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-emerald-500" /> eBook / PDF Attachment
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">Direct Upload or Paste</span>
               </Label>
-              <Input
-                type="url"
-                value={ebookUrlInput}
-                onChange={(e) => setEbookUrlInput(e.target.value)}
-                placeholder="https://.../guide.pdf"
-              />
+
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 p-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                    {uploadingEbook ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" /> Uploading PDF…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5" /> Upload eBook PDF File
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleStudentEbookFile}
+                    disabled={uploadingEbook}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {uploadedEbook ? (
+                <div className="flex items-center justify-between gap-2 p-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-600 dark:text-emerald-400">
+                  <span className="truncate font-semibold flex items-center gap-1">
+                    <FileText className="h-3.5 w-3.5" /> PDF Uploaded & Attached
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedEbook("");
+                      setEbookUrlInput("");
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  type="url"
+                  value={ebookUrlInput}
+                  onChange={(e) => setEbookUrlInput(e.target.value)}
+                  placeholder="Or paste external PDF URL"
+                />
+              )}
             </div>
 
             <DialogFooter className="pt-2">

@@ -1,7 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, XCircle, Clock, BookOpen, ExternalLink, Code2, Copy, Check } from "lucide-react";
+import {
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  BookOpen,
+  ExternalLink,
+  Code2,
+  Copy,
+  Check,
+  Upload,
+  X,
+  FileText,
+  Images,
+  Loader2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -25,6 +40,12 @@ export function ResourcesPanel() {
     slideImages: "",
     ebookPdfUrl: "",
   });
+
+  // Direct File Upload State
+  const [uploadedSlides, setUploadedSlides] = useState<string[]>([]);
+  const [uploadedEbook, setUploadedEbook] = useState<string>("");
+  const [uploadingSlides, setUploadingSlides] = useState(false);
+  const [uploadingEbook, setUploadingEbook] = useState(false);
 
   // Code Snippets State
   const [snippetForm, setSnippetForm] = useState({
@@ -71,20 +92,91 @@ export function ResourcesPanel() {
   const pendingList = allResources.filter((r) => r.status === "pending");
   const snippetsList = codeSnippets.data ?? [];
 
+  // Direct File Upload Handler for Slide Images
+  async function handleSlideFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingSlides(true);
+    const newUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file) continue;
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const filePath = `playbook/slides/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        const { error } = await supabase.storage.from("photos").upload(filePath, file, { upsert: true });
+        if (error) {
+          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+          continue;
+        }
+
+        const { data } = supabase.storage.from("photos").getPublicUrl(filePath);
+        if (data?.publicUrl) {
+          newUrls.push(data.publicUrl);
+        }
+      }
+
+      if (newUrls.length > 0) {
+        setUploadedSlides((prev) => [...prev, ...newUrls]);
+        toast.success(`Uploaded ${newUrls.length} slide image(s)!`);
+      }
+    } catch (err) {
+      toast.error("Slide upload failed");
+    } finally {
+      setUploadingSlides(false);
+      e.target.value = "";
+    }
+  }
+
+  // Direct File Upload Handler for eBook PDF
+  async function handleEbookFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingEbook(true);
+    try {
+      const file = files[0];
+      if (!file) return;
+      const ext = file.name.split(".").pop() ?? "pdf";
+      const filePath = `playbook/ebooks/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+      const { error } = await supabase.storage.from("photos").upload(filePath, file, { upsert: true });
+      if (error) throw new Error(error.message);
+
+      const { data } = supabase.storage.from("photos").getPublicUrl(filePath);
+      if (data?.publicUrl) {
+        setUploadedEbook(data.publicUrl);
+        setForm((prev) => ({ ...prev, ebookPdfUrl: data.publicUrl }));
+        toast.success("eBook PDF uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "PDF upload failed");
+    } finally {
+      setUploadingEbook(false);
+      e.target.value = "";
+    }
+  }
+
   async function addResource(e: React.FormEvent) {
     e.preventDefault();
-    const parsedSlides = form.slideImages
+    const pastedSlides = form.slideImages
       .split("\n")
       .map((s) => s.trim())
       .filter((s) => s.length > 0 && s.startsWith("http"));
+
+    const combinedSlides = Array.from(new Set([...uploadedSlides, ...pastedSlides]));
+    const finalEbook = uploadedEbook.trim() || form.ebookPdfUrl.trim() || null;
 
     const { error } = await supabase.from("resources").insert({
       title: form.title.trim(),
       url: form.url.trim(),
       category: form.category.trim() || "templates",
       description: form.description.trim() || null,
-      slide_images: parsedSlides.length > 0 ? parsedSlides : [],
-      ebook_pdf_url: form.ebookPdfUrl.trim() || null,
+      slide_images: combinedSlides.length > 0 ? combinedSlides : [],
+      ebook_pdf_url: finalEbook,
       status: "approved",
       created_by: user?.id ?? null,
     });
@@ -93,6 +185,8 @@ export function ResourcesPanel() {
       return;
     }
     setForm({ title: "", url: "", category: "templates", description: "", slideImages: "", ebookPdfUrl: "" });
+    setUploadedSlides([]);
+    setUploadedEbook("");
     toast.success("Resource published to playbook");
     void resources.refetch();
   }
@@ -195,27 +289,30 @@ export function ResourcesPanel() {
               <BookOpen className="h-5 w-5 text-primary" />
               <h3 className="font-display text-lg font-bold">Add Playbook Resource</h3>
             </div>
+
             <div>
-              <Label className="text-xs">Resource Title</Label>
+              <Label className="text-xs font-semibold">Resource Title *</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. Session 3: React & Tailwind Slides"
+                placeholder="e.g. System Design Cheat Sheet & Deck"
                 required
               />
             </div>
+
             <div>
-              <Label className="text-xs">Resource Link (Google Drive / GitHub / URL)</Label>
+              <Label className="text-xs font-semibold">Resource Link (GitHub / Web) *</Label>
               <Input
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
-                placeholder="https://drive.google.com/drive/folders/..."
+                placeholder="https://github.com/..."
                 required
               />
             </div>
+
             <div>
-              <Label className="text-xs">Category</Label>
+              <Label className="text-xs font-semibold">Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -230,8 +327,9 @@ export function ResourcesPanel() {
                 </SelectContent>
               </Select>
             </div>
+
             <div>
-              <Label className="text-xs">Description</Label>
+              <Label className="text-xs font-semibold">Description</Label>
               <Textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -239,25 +337,125 @@ export function ResourcesPanel() {
                 placeholder="Short overview of what this resource provides..."
               />
             </div>
-            <div>
-              <Label className="text-xs">Multi-Photo Slide Deck URLs (1 URL per line)</Label>
+
+            {/* DIRECT FILE UPLOADER FOR SLIDE IMAGES */}
+            <div className="space-y-2 pt-1 border-t border-border">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Images className="h-3.5 w-3.5 text-primary" /> Slide Images Deck
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">Direct Upload or Paste</span>
+              </Label>
+
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2.5 text-xs text-primary hover:bg-primary/10 transition-colors">
+                    {uploadingSlides ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" /> Uploading Slides…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" /> Pick / Drag Slide Photos
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleSlideFiles}
+                    disabled={uploadingSlides}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Uploaded Slide Image Thumbnails */}
+              {uploadedSlides.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto py-1">
+                  {uploadedSlides.map((url, idx) => (
+                    <div key={idx} className="relative h-14 w-14 shrink-0 rounded-md overflow-hidden border border-border group">
+                      <img src={url} alt={`Slide ${idx + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setUploadedSlides((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"
+                      >
+                        <X className="h-4 w-4 text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <Textarea
                 value={form.slideImages}
                 onChange={(e) => setForm({ ...form, slideImages: e.target.value })}
-                rows={2}
-                className="font-mono text-xs"
-                placeholder={`https://images.unsplash.com/photo-1...\nhttps://images.unsplash.com/photo-2...`}
+                rows={1}
+                className="font-mono text-[11px]"
+                placeholder="Or paste external image URLs (1 per line)"
               />
             </div>
-            <div>
-              <Label className="text-xs">eBook / PDF Attachment URL</Label>
-              <Input
-                type="url"
-                value={form.ebookPdfUrl}
-                onChange={(e) => setForm({ ...form, ebookPdfUrl: e.target.value })}
-                placeholder="https://.../handbook.pdf"
-              />
+
+            {/* DIRECT FILE UPLOADER FOR EBOOK PDF */}
+            <div className="space-y-2 pt-1 border-t border-border">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-emerald-500" /> eBook / PDF Attachment
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">Direct Upload or Paste</span>
+              </Label>
+
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 p-2.5 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                    {uploadingEbook ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-emerald-500" /> Uploading PDF…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" /> Upload eBook PDF File
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleEbookFile}
+                    disabled={uploadingEbook}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {uploadedEbook ? (
+                <div className="flex items-center justify-between gap-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-600 dark:text-emerald-400">
+                  <span className="truncate font-semibold flex items-center gap-1">
+                    <FileText className="h-3.5 w-3.5" /> PDF Uploaded & Attached
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedEbook("");
+                      setForm((prev) => ({ ...prev, ebookPdfUrl: "" }));
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  type="url"
+                  value={form.ebookPdfUrl}
+                  onChange={(e) => setForm({ ...form, ebookPdfUrl: e.target.value })}
+                  placeholder="Or paste external PDF URL"
+                />
+              )}
             </div>
+
             <Button type="submit" className="w-full">
               Publish to Playbook
             </Button>
