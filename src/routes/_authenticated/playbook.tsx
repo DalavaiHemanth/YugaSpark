@@ -351,7 +351,7 @@ function PlaybookPage() {
   // Rate limited submission logic (5s cooldown)
   async function handleSubmitResource(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) return;
+    if (!title.trim()) return;
 
     const now = Date.now();
     if (now - lastSubmittedTime < 5000) {
@@ -367,11 +367,12 @@ function PlaybookPage() {
         .filter((s) => s.length > 0 && s.startsWith("http"));
 
       const combinedSlides = Array.from(new Set([...uploadedSlides, ...pastedSlides]));
-      const finalEbook = uploadedEbook.trim() || ebookUrlInput.trim() || null;
+      const finalEbook: string | null = uploadedEbook.trim() || ebookUrlInput.trim() || null;
+      const finalUrl: string = url.trim() || finalEbook || (combinedSlides.length > 0 && combinedSlides[0] ? combinedSlides[0] : "#");
 
       const { error } = await supabase.from("resources").insert({
         title: title.trim(),
-        url: url.trim(),
+        url: finalUrl,
         category,
         description: description.trim() || null,
         status: "pending",
@@ -813,13 +814,12 @@ function PlaybookPage() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold">Primary Resource Link (Google Drive / GitHub / Web) *</Label>
+              <Label className="text-xs font-semibold">Primary Resource Link (Optional)</Label>
               <Input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://github.com/... or https://drive.google.com/..."
-                required
               />
             </div>
             <div>
@@ -969,7 +969,7 @@ function PlaybookPage() {
               <Button type="button" variant="outline" size="sm" onClick={() => setSubmitModalOpen(false)} disabled={submitting}>
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={submitting || !title.trim() || !url.trim()}>
+              <Button type="submit" size="sm" disabled={submitting || !title.trim()}>
                 {submitting ? "Submitting…" : "Submit for Approval"}
               </Button>
             </DialogFooter>

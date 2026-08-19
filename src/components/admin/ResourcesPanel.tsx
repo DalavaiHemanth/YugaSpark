@@ -16,6 +16,10 @@ import {
   FileText,
   Images,
   Loader2,
+  Eye,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -25,6 +29,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function ResourcesPanel() {
   const { user } = useAuth();
@@ -46,6 +57,10 @@ export function ResourcesPanel() {
   const [uploadedEbook, setUploadedEbook] = useState<string>("");
   const [uploadingSlides, setUploadingSlides] = useState(false);
   const [uploadingEbook, setUploadingEbook] = useState(false);
+
+  // Carousel & eBook Preview Modals
+  const [activeCarousel, setActiveCarousel] = useState<{ title: string; slides: string[]; index: number } | null>(null);
+  const [activeEbook, setActiveEbook] = useState<{ title: string; url: string } | null>(null);
 
   // Code Snippets State
   const [snippetForm, setSnippetForm] = useState({
@@ -168,11 +183,12 @@ export function ResourcesPanel() {
       .filter((s) => s.length > 0 && s.startsWith("http"));
 
     const combinedSlides = Array.from(new Set([...uploadedSlides, ...pastedSlides]));
-    const finalEbook = uploadedEbook.trim() || form.ebookPdfUrl.trim() || null;
+    const finalEbook: string | null = uploadedEbook.trim() || form.ebookPdfUrl.trim() || null;
+    const finalUrl: string = form.url.trim() || finalEbook || (combinedSlides.length > 0 && combinedSlides[0] ? combinedSlides[0] : "#");
 
     const { error } = await supabase.from("resources").insert({
       title: form.title.trim(),
-      url: form.url.trim(),
+      url: finalUrl,
       category: form.category.trim() || "templates",
       description: form.description.trim() || null,
       slide_images: combinedSlides.length > 0 ? combinedSlides : [],
@@ -301,13 +317,12 @@ export function ResourcesPanel() {
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Resource Link (GitHub / Web) *</Label>
+              <Label className="text-xs font-semibold">Resource Link (GitHub / Web) (Optional)</Label>
               <Input
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 placeholder="https://github.com/..."
-                required
               />
             </div>
 
@@ -502,30 +517,91 @@ export function ResourcesPanel() {
                     No published resources yet. Add one using the form on the left.
                   </div>
                 ) : (
-                  approvedList.map((r) => (
-                    <div key={r.id} className="surface flex items-start justify-between gap-3 p-4">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm truncate">{r.title}</p>
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {r.category}
-                          </Badge>
+                  approvedList.map((r: any) => {
+                    const hasSlides = r.slide_images && r.slide_images.length > 0;
+                    const hasEbook = Boolean(r.ebook_pdf_url);
+                    return (
+                      <div key={r.id} className="surface flex flex-col gap-2 p-4 rounded-xl border border-border">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-sm truncate">{r.title}</p>
+                              <Badge variant="secondary" className="text-[10px] capitalize">
+                                {r.category}
+                              </Badge>
+                              {hasSlides ? (
+                                <Badge className="bg-primary/90 text-primary-foreground font-mono text-[10px] gap-1 shadow">
+                                  <Images className="h-3 w-3" /> {r.slide_images.length} Slides
+                                </Badge>
+                              ) : null}
+                              {hasEbook ? (
+                                <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1">
+                                  <FileText className="h-3 w-3" /> eBook PDF
+                                </Badge>
+                              ) : null}
+                            </div>
+                            {r.description ? <p className="text-xs text-muted-foreground">{r.description}</p> : null}
+                          </div>
+
+                          <Button variant="ghost" size="icon" onClick={() => removeResource(r.id)} aria-label="Delete">
+                            <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
                         </div>
-                        {r.description ? <p className="text-xs text-muted-foreground">{r.description}</p> : null}
-                        <a
-                          href={r.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" /> {r.url}
-                        </a>
+
+                        {/* Slide Thumbnails Strip */}
+                        {hasSlides ? (
+                          <div className="flex gap-2 overflow-x-auto py-1.5">
+                            {r.slide_images.map((imgUrl: string, idx: number) => (
+                              <div
+                                key={idx}
+                                onClick={() => setActiveCarousel({ title: r.title, slides: r.slide_images, index: idx })}
+                                className="relative h-14 w-14 shrink-0 rounded-md overflow-hidden border border-border cursor-pointer hover:border-primary transition-all group"
+                              >
+                                <img src={imgUrl} alt={`Slide ${idx + 1}`} className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                  <Eye className="h-4 w-4" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {/* Resource Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/40 text-xs">
+                          {r.url && r.url !== "#" ? (
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-semibold"
+                            >
+                              <ExternalLink className="h-3 w-3" /> {r.url}
+                            </a>
+                          ) : null}
+
+                          {hasSlides ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveCarousel({ title: r.title, slides: r.slide_images, index: 0 })}
+                              className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1"
+                            >
+                              <Images className="h-3 w-3" /> View Slide Deck Modal
+                            </button>
+                          ) : null}
+
+                          {hasEbook ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveEbook({ title: r.title, url: r.ebook_pdf_url })}
+                              className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
+                            >
+                              <FileText className="h-3 w-3" /> Preview eBook PDF
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeResource(r.id)} aria-label="Delete">
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             ) : (
@@ -535,53 +611,114 @@ export function ResourcesPanel() {
                     No pending student submissions right now.
                   </div>
                 ) : (
-                  pendingList.map((r) => (
-                    <div
-                      key={r.id}
-                      className="surface flex flex-wrap items-center justify-between gap-3 p-4 border-amber-500/30 bg-amber-500/5"
-                    >
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30"
-                          >
-                            Pending Review
-                          </Badge>
-                          <p className="font-semibold text-sm truncate">{r.title}</p>
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {r.category}
-                          </Badge>
+                  pendingList.map((r: any) => {
+                    const hasSlides = r.slide_images && r.slide_images.length > 0;
+                    const hasEbook = Boolean(r.ebook_pdf_url);
+                    return (
+                      <div
+                        key={r.id}
+                        className="surface flex flex-col gap-2 p-4 border-amber-500/30 bg-amber-500/5 rounded-xl"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30"
+                              >
+                                Pending Review
+                              </Badge>
+                              <p className="font-semibold text-sm truncate">{r.title}</p>
+                              <Badge variant="secondary" className="text-[10px] capitalize">
+                                {r.category}
+                              </Badge>
+                              {hasSlides ? (
+                                <Badge className="bg-primary/90 text-primary-foreground font-mono text-[10px] gap-1 shadow">
+                                  <Images className="h-3 w-3" /> {r.slide_images.length} Slides
+                                </Badge>
+                              ) : null}
+                              {hasEbook ? (
+                                <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1">
+                                  <FileText className="h-3 w-3" /> eBook PDF
+                                </Badge>
+                              ) : null}
+                            </div>
+                            {r.description ? <p className="text-xs text-muted-foreground">{r.description}</p> : null}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => void approveResource(r.id)}
+                              className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Publish
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void removeResource(r.id)}
+                              className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                            >
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </Button>
+                          </div>
                         </div>
-                        {r.description ? <p className="text-xs text-muted-foreground">{r.description}</p> : null}
-                        <a
-                          href={r.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" /> {r.url}
-                        </a>
+
+                        {/* Slide Thumbnails Strip */}
+                        {hasSlides ? (
+                          <div className="flex gap-2 overflow-x-auto py-1.5">
+                            {r.slide_images.map((imgUrl: string, idx: number) => (
+                              <div
+                                key={idx}
+                                onClick={() => setActiveCarousel({ title: r.title, slides: r.slide_images, index: idx })}
+                                className="relative h-14 w-14 shrink-0 rounded-md overflow-hidden border border-border cursor-pointer hover:border-primary transition-all group"
+                              >
+                                <img src={imgUrl} alt={`Slide ${idx + 1}`} className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                  <Eye className="h-4 w-4" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {/* Resource Action Links */}
+                        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-amber-500/20 text-xs">
+                          {r.url && r.url !== "#" ? (
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-semibold"
+                            >
+                              <ExternalLink className="h-3 w-3" /> {r.url}
+                            </a>
+                          ) : null}
+
+                          {hasSlides ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveCarousel({ title: r.title, slides: r.slide_images, index: 0 })}
+                              className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1"
+                            >
+                              <Images className="h-3 w-3" /> Preview Carousel
+                            </button>
+                          ) : null}
+
+                          {hasEbook ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveEbook({ title: r.title, url: r.ebook_pdf_url })}
+                              className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
+                            >
+                              <FileText className="h-3 w-3" /> Preview eBook
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => void approveResource(r.id)}
-                          className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Publish
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void removeResource(r.id)}
-                          className="h-8 text-xs text-destructive hover:bg-destructive/10"
-                        >
-                          <XCircle className="h-3.5 w-3.5" /> Reject
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
@@ -736,6 +873,111 @@ export function ResourcesPanel() {
           </div>
         </div>
       )}
+      {/* INTERACTIVE MULTI-PHOTO CAROUSEL DIALOG (ADMIN PREVIEW) */}
+      {activeCarousel ? (
+        <Dialog open={Boolean(activeCarousel)} onOpenChange={() => setActiveCarousel(null)}>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-slate-950 text-white border-white/10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-slate-900/80">
+              <div>
+                <h3 className="font-bold text-base text-white">{activeCarousel.title}</h3>
+                <p className="text-xs text-slate-400 font-mono">
+                  Slide {activeCarousel.index + 1} of {activeCarousel.slides.length}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveCarousel(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="relative flex items-center justify-center min-h-[400px] max-h-[70vh] bg-black p-4">
+              <img
+                src={activeCarousel.slides[activeCarousel.index]}
+                alt={`Slide ${activeCarousel.index + 1}`}
+                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-2xl transition-all duration-200"
+              />
+
+              {activeCarousel.slides.length > 1 ? (
+                <>
+                  <button
+                    onClick={() =>
+                      setActiveCarousel({
+                        ...activeCarousel,
+                        index:
+                          (activeCarousel.index - 1 + activeCarousel.slides.length) %
+                          activeCarousel.slides.length,
+                      })
+                    }
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary backdrop-blur transition-all"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={() =>
+                      setActiveCarousel({
+                        ...activeCarousel,
+                        index: (activeCarousel.index + 1) % activeCarousel.slides.length,
+                      })
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary backdrop-blur transition-all"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            {activeCarousel.slides.length > 1 ? (
+              <div className="flex justify-center gap-2 py-3 bg-slate-900/80 border-t border-white/10">
+                {activeCarousel.slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveCarousel({ ...activeCarousel, index: i })}
+                    className={`h-2 rounded-full transition-all ${
+                      i === activeCarousel.index ? "w-6 bg-primary" : "w-2 bg-white/30 hover:bg-white/60"
+                    }`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
+      {/* EBOOK PDF PREVIEW MODAL (ADMIN PREVIEW) */}
+      {activeEbook ? (
+        <Dialog open={Boolean(activeEbook)} onOpenChange={() => setActiveEbook(null)}>
+          <DialogContent className="max-w-4xl p-4 bg-slate-900 border-white/10 space-y-3">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between font-bold text-white text-base">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-emerald-400" /> {activeEbook.title} — eBook PDF
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="h-[65vh] w-full rounded-lg overflow-hidden border border-white/10 bg-black">
+              <iframe src={activeEbook.url} className="w-full h-full border-none" title={activeEbook.title} />
+            </div>
+
+            <DialogFooter className="flex items-center justify-between gap-3 pt-2">
+              <a
+                href={activeEbook.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:underline"
+              >
+                <Download className="h-4 w-4" /> Open / Download PDF
+              </a>
+              <Button size="sm" variant="outline" onClick={() => setActiveEbook(null)}>
+                Close Preview
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
