@@ -17,7 +17,14 @@ export function ResourcesPanel() {
 
   // Web Links State
   const [activeTab, setActiveTab] = useState<"approved" | "pending">("approved");
-  const [form, setForm] = useState({ title: "", url: "", category: "templates", description: "" });
+  const [form, setForm] = useState({
+    title: "",
+    url: "",
+    category: "templates",
+    description: "",
+    slideImages: "",
+    ebookPdfUrl: "",
+  });
 
   // Code Snippets State
   const [snippetForm, setSnippetForm] = useState({
@@ -66,11 +73,18 @@ export function ResourcesPanel() {
 
   async function addResource(e: React.FormEvent) {
     e.preventDefault();
+    const parsedSlides = form.slideImages
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s.startsWith("http"));
+
     const { error } = await supabase.from("resources").insert({
       title: form.title.trim(),
       url: form.url.trim(),
       category: form.category.trim() || "templates",
       description: form.description.trim() || null,
+      slide_images: parsedSlides.length > 0 ? parsedSlides : [],
+      ebook_pdf_url: form.ebookPdfUrl.trim() || null,
       status: "approved",
       created_by: user?.id ?? null,
     });
@@ -78,7 +92,7 @@ export function ResourcesPanel() {
       toast.error(error.message);
       return;
     }
-    setForm({ title: "", url: "", category: "templates", description: "" });
+    setForm({ title: "", url: "", category: "templates", description: "", slideImages: "", ebookPdfUrl: "" });
     toast.success("Resource published to playbook");
     void resources.refetch();
   }
@@ -221,8 +235,27 @@ export function ResourcesPanel() {
               <Textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
+                rows={2}
                 placeholder="Short overview of what this resource provides..."
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Multi-Photo Slide Deck URLs (1 URL per line)</Label>
+              <Textarea
+                value={form.slideImages}
+                onChange={(e) => setForm({ ...form, slideImages: e.target.value })}
+                rows={2}
+                className="font-mono text-xs"
+                placeholder={`https://images.unsplash.com/photo-1...\nhttps://images.unsplash.com/photo-2...`}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">eBook / PDF Attachment URL</Label>
+              <Input
+                type="url"
+                value={form.ebookPdfUrl}
+                onChange={(e) => setForm({ ...form, ebookPdfUrl: e.target.value })}
+                placeholder="https://.../handbook.pdf"
               />
             </div>
             <Button type="submit" className="w-full">

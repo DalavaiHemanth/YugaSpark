@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -10,7 +9,6 @@ import {
   Copy,
   Check,
   MapPin,
-  Clock,
   Code2,
   Sparkles,
   Layers,
@@ -19,6 +17,13 @@ import {
   FileCode,
   Flame,
   Award,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Images,
+  Eye,
+  Download,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -187,23 +192,46 @@ const CATEGORY_LABELS: Record<string, string> = {
   guides: "📘 Hackathon Guides & Playbooks",
 };
 
+interface PlaybookResource {
+  id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  category: string;
+  status?: string;
+  slide_images?: string[];
+  ebook_pdf_url?: string | null;
+  extra_links?: Array<{ title: string; url: string }>;
+  created_at: string;
+}
+
 function PlaybookPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"resources" | "roadmap" | "snippets">("resources");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [lastSubmittedTime, setLastSubmittedTime] = useState<number>(0);
+
+  // Carousel Deck Modal State
+  const [activeCarousel, setActiveCarousel] = useState<{ title: string; slides: string[]; index: number } | null>(null);
+
+  // eBook PDF Preview Modal State
+  const [activeEbook, setActiveEbook] = useState<{ title: string; url: string } | null>(null);
 
   // Student Resource Submission Form State
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [category, setCategory] = useState("templates");
   const [description, setDescription] = useState("");
+  const [slideImagesInput, setSlideImagesInput] = useState("");
+  const [ebookUrlInput, setEbookUrlInput] = useState("");
 
+  // High performance query caching (staleTime 15 mins, gcTime 60 mins) to protect DB connections
   const resources = useQuery({
     queryKey: ["resources-public"],
-    staleTime: 10 * 60_000,
-    gcTime: 30 * 60_000,
+    staleTime: 15 * 60_000,
+    gcTime: 60 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("resources")
@@ -211,7 +239,7 @@ function PlaybookPage() {
         .eq("status", "approved")
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data as unknown as PlaybookResource[]) ?? [];
     },
   });
 
@@ -221,8 +249,8 @@ function PlaybookPage() {
   // Fetch Dynamic Code Snippets from DB
   const snippetsQuery = useQuery({
     queryKey: ["code-snippets-public"],
-    staleTime: 10 * 60_000,
-    gcTime: 30 * 60_000,
+    staleTime: 15 * 60_000,
+    gcTime: 60 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("code_snippets")
@@ -244,27 +272,44 @@ function PlaybookPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  // Rate limited submission logic (5s cooldown)
   async function handleSubmitResource(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !url.trim()) return;
 
+    const now = Date.now();
+    if (now - lastSubmittedTime < 5000) {
+      toast.warning("Please wait a few seconds before submitting another resource.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      const parsedSlides = slideImagesInput
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && s.startsWith("http"));
+
       const { error } = await supabase.from("resources").insert({
         title: title.trim(),
         url: url.trim(),
         category,
         description: description.trim() || null,
-        status: "pending", // Student submissions require admin approval
+        status: "pending",
+        slide_images: parsedSlides.length > 0 ? parsedSlides : [],
+        ebook_pdf_url: ebookUrlInput.trim() || null,
         created_by: user?.id ?? null,
       });
 
       if (error) throw new Error(error.message);
 
+      setLastSubmittedTime(Date.now());
       toast.success("Resource submitted! It will appear on the playbook once approved by admins.");
       setTitle("");
       setUrl("");
       setDescription("");
+      setSlideImagesInput("");
+      setEbookUrlInput("");
       setSubmitModalOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed");
@@ -278,7 +323,7 @@ function PlaybookPage() {
       <PageHeader
         eyebrow="Playbook"
         title="Hackathon Playbook & Learning Hub"
-        description="Curated starter kits, copyable code snippets, master roadmaps, and presentation decks from Yuga Spark."
+        description="Curated starter kits, multi-photo visual concepts, eBooks, copyable code snippets, and master roadmaps."
       />
 
       {/* Main Tab Navigation Header */}
@@ -327,9 +372,9 @@ function PlaybookPage() {
             <EmptyState
               icon={BookOpen}
               title="The playbook is being updated"
-              description="Admins and members curate starter kits, slide decks and API lists here."
+              description="Admins and members curate starter kits, slide decks, visual carousels, and eBooks here."
               steps={[
-                "Click 'Submit Resource' above to submit a link or template worth sharing.",
+                "Click 'Submit Resource' above to submit a concept, eBook, or link deck.",
                 "Browse the Master Roadmap tab for step-by-step hackathon prep.",
                 "Check out Copyable Snippets for ready-to-use backend & UI boilerplates.",
               ]}
@@ -350,28 +395,105 @@ function PlaybookPage() {
               <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {list
                   .filter((r) => r.category === cat)
-                  .map((r) => (
-                    <a
-                      key={r.id}
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="surface lift group flex flex-col p-5 rounded-xl border border-border transition-all hover:border-primary/40"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-display text-base font-bold group-hover:text-primary transition-colors">
-                          {r.title}
-                        </h3>
-                        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                  .map((r) => {
+                    const hasSlides = r.slide_images && r.slide_images.length > 0;
+                    const hasEbook = Boolean(r.ebook_pdf_url);
+
+                    return (
+                      <div
+                        key={r.id}
+                        className="surface lift group flex flex-col justify-between p-5 rounded-xl border border-border transition-all hover:border-primary/40 space-y-4"
+                      >
+                        <div className="space-y-2">
+                          {/* Multi-Photo Carousel Banner Preview */}
+                          {hasSlides ? (
+                            <div
+                              onClick={() =>
+                                setActiveCarousel({ title: r.title, slides: r.slide_images!, index: 0 })
+                              }
+                              className="relative h-44 w-full cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-slate-950 group-hover:border-primary/50 transition-all"
+                            >
+                              <img
+                                src={r.slide_images![0]}
+                                alt={r.title}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end justify-between p-3">
+                                <Badge className="bg-primary/90 text-primary-foreground font-mono text-[10px] gap-1 shadow">
+                                  <Images className="h-3 w-3" /> {r.slide_images!.length} Slides Deck
+                                </Badge>
+                                <span className="text-[11px] text-white font-medium flex items-center gap-1 bg-black/60 px-2 py-1 rounded-md backdrop-blur">
+                                  <Eye className="h-3 w-3 text-primary" /> View Carousel
+                                </span>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="font-display text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                              {r.title}
+                            </h3>
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Open External Resource"
+                              className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </div>
+
+                          {r.description ? (
+                            <p className="text-xs leading-relaxed text-muted-foreground line-clamp-3">
+                              {r.description}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        {/* Action Badges & Buttons */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="secondary" className="text-[10px] capitalize">
+                              {r.category}
+                            </Badge>
+
+                            {hasEbook ? (
+                              <button
+                                onClick={() => setActiveEbook({ title: r.title, url: r.ebook_pdf_url! })}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                              >
+                                <FileText className="h-3 w-3" /> eBook PDF
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {hasSlides ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setActiveCarousel({ title: r.title, slides: r.slide_images!, index: 0 })
+                              }
+                              className="h-7 px-2 text-[11px] font-semibold text-primary hover:bg-primary/10 gap-1"
+                            >
+                              <Images className="h-3.5 w-3.5" /> View Slides
+                            </Button>
+                          ) : (
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                            >
+                              Open Link <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
-                      {r.description ? (
-                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{r.description}</p>
-                      ) : null}
-                      <Badge variant="secondary" className="mt-4 self-start text-[10px] capitalize">
-                        {r.category}
-                      </Badge>
-                    </a>
-                  ))}
+                    );
+                  })}
               </div>
             </section>
           ))
@@ -471,6 +593,121 @@ function PlaybookPage() {
         </div>
       ) : null}
 
+      {/* INTERACTIVE MULTI-PHOTO CAROUSEL DIALOG */}
+      {activeCarousel ? (
+        <Dialog open={Boolean(activeCarousel)} onOpenChange={() => setActiveCarousel(null)}>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-slate-950 text-white border-white/10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-slate-900/80">
+              <div>
+                <h3 className="font-bold text-base text-white">{activeCarousel.title}</h3>
+                <p className="text-xs text-slate-400 font-mono">
+                  Slide {activeCarousel.index + 1} of {activeCarousel.slides.length}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveCarousel(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Slide View area */}
+            <div className="relative flex items-center justify-center min-h-[400px] max-h-[70vh] bg-black p-4">
+              <img
+                src={activeCarousel.slides[activeCarousel.index]}
+                alt={`Slide ${activeCarousel.index + 1}`}
+                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-2xl transition-all duration-200"
+              />
+
+              {/* Prev / Next controls */}
+              {activeCarousel.slides.length > 1 ? (
+                <>
+                  <button
+                    onClick={() =>
+                      setActiveCarousel({
+                        ...activeCarousel,
+                        index:
+                          (activeCarousel.index - 1 + activeCarousel.slides.length) %
+                          activeCarousel.slides.length,
+                      })
+                    }
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary backdrop-blur transition-all"
+                    aria-label="Previous Slide"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={() =>
+                      setActiveCarousel({
+                        ...activeCarousel,
+                        index: (activeCarousel.index + 1) % activeCarousel.slides.length,
+                      })
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary backdrop-blur transition-all"
+                    aria-label="Next Slide"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            {/* Slide Dots Indicator */}
+            {activeCarousel.slides.length > 1 ? (
+              <div className="flex justify-center gap-2 py-3 bg-slate-900/80 border-t border-white/10">
+                {activeCarousel.slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveCarousel({ ...activeCarousel, index: i })}
+                    className={`h-2 rounded-full transition-all ${
+                      i === activeCarousel.index ? "w-6 bg-primary" : "w-2 bg-white/30 hover:bg-white/60"
+                    }`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
+      {/* EBOOK PDF PREVIEW MODAL */}
+      {activeEbook ? (
+        <Dialog open={Boolean(activeEbook)} onOpenChange={() => setActiveEbook(null)}>
+          <DialogContent className="max-w-4xl p-4 bg-slate-900 border-white/10 space-y-3">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between font-bold text-white text-base">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-emerald-400" /> {activeEbook.title} — eBook PDF
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="h-[65vh] w-full rounded-lg overflow-hidden border border-white/10 bg-black">
+              <iframe
+                src={activeEbook.url}
+                className="w-full h-full border-none"
+                title={activeEbook.title}
+              />
+            </div>
+
+            <DialogFooter className="flex items-center justify-between gap-3 pt-2">
+              <a
+                href={activeEbook.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:underline"
+              >
+                <Download className="h-4 w-4" /> Download / Open PDF in New Tab
+              </a>
+              <Button size="sm" variant="outline" onClick={() => setActiveEbook(null)}>
+                Close Preview
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
       {/* Student Resource Submission Modal */}
       <Dialog open={submitModalOpen} onOpenChange={setSubmitModalOpen}>
         <DialogContent className="max-w-md">
@@ -480,7 +717,7 @@ function PlaybookPage() {
               Submit Resource to Playbook
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Share a high-quality starter kit, slide template, API, or tutorial link with Yuga Spark members.
+              Share a starter kit, multi-photo slide deck, eBook PDF, or tutorial link with Yuga Spark members.
             </DialogDescription>
           </DialogHeader>
 
@@ -490,17 +727,17 @@ function PlaybookPage() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Next.js 14 Supabase Starter Kit"
+                placeholder="e.g. System Design Cheat Sheet & eBook"
                 required
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold">URL / Link (Google Drive / GitHub / Web) *</Label>
+              <Label className="text-xs font-semibold">Primary Resource Link (Google Drive / GitHub / Web) *</Label>
               <Input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://drive.google.com/..."
+                placeholder="https://github.com/... or https://drive.google.com/..."
                 required
               />
             </div>
@@ -525,8 +762,35 @@ function PlaybookPage() {
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Briefly explain how this resource helps during hackathons..."
+                rows={2}
+                placeholder="Briefly explain how this resource helps students..."
+              />
+            </div>
+
+            {/* Optional Multi-Photo Slides Input */}
+            <div>
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Images className="h-3.5 w-3.5 text-primary" /> Multi-Photo Slide Deck URLs (1 URL per line)
+              </Label>
+              <Textarea
+                value={slideImagesInput}
+                onChange={(e) => setSlideImagesInput(e.target.value)}
+                rows={2}
+                className="font-mono text-xs"
+                placeholder={`https://images.unsplash.com/photo-1...\nhttps://images.unsplash.com/photo-2...`}
+              />
+            </div>
+
+            {/* Optional eBook / PDF Link */}
+            <div>
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-emerald-500" /> eBook / PDF Attachment Link
+              </Label>
+              <Input
+                type="url"
+                value={ebookUrlInput}
+                onChange={(e) => setEbookUrlInput(e.target.value)}
+                placeholder="https://.../guide.pdf"
               />
             </div>
 
@@ -544,3 +808,4 @@ function PlaybookPage() {
     </AppShell>
   );
 }
+

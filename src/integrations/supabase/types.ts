@@ -454,7 +454,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          ebook_pdf_url: string | null
+          extra_links: Json | null
           id: string
+          slide_images: string[] | null
           status: string
           title: string
           url: string
@@ -464,7 +467,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          ebook_pdf_url?: string | null
+          extra_links?: Json | null
           id?: string
+          slide_images?: string[] | null
           status?: string
           title: string
           url: string
@@ -474,7 +480,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          ebook_pdf_url?: string | null
+          extra_links?: Json | null
           id?: string
+          slide_images?: string[] | null
           status?: string
           title?: string
           url?: string
