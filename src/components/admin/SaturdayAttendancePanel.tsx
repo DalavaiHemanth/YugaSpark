@@ -282,26 +282,99 @@ export function SaturdayAttendancePanel() {
     }
   }
 
+  function parseYearNum(yearStr: string | null | undefined): number {
+    if (!yearStr) return 999;
+    const match = yearStr.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 998;
+  }
+
   async function exportAttendanceExcel() {
     if (!activeSession) return;
     try {
       const XLSX = await import("xlsx");
-      const filteredStudents = visibleStudents;
-      const rows = filteredStudents.map((m, idx) => {
+      
+      // Sort students by Year (numeric) then Registration Number / Full Name
+      const sortedStudents = [...visibleStudents].sort((a, b) => {
+        const yA = parseYearNum(a.year);
+        const yB = parseYearNum(b.year);
+        if (yA !== yB) return yA - yB;
+        const regA = (a.registration_number || "").toLowerCase();
+        const regB = (b.registration_number || "").toLowerCase();
+        if (regA !== regB) return regA.localeCompare(regB);
+        return (a.full_name || "").toLowerCase().localeCompare((b.full_name || "").toLowerCase());
+      });
+
+      const rows: Record<string, unknown>[] = sortedStudents.map((m, idx) => {
         const att = attendanceMap.get(m.id);
         return {
           "#": idx + 1,
-          "Full Name": m.full_name || "—",
-          Email: m.email,
           "Registration Number": m.registration_number || "—",
-          Batch: m.batch || "—",
-          Year: m.year || "—",
-          Status: att ? "PRESENT" : "ABSENT",
-          "Scan Time": att ? new Date(att.scanned_at).toLocaleTimeString() : "—",
+          "Full Name": m.full_name || "—",
+          "Year": m.year || "—",
+          "Present Status": att ? "PRESENT" : "ABSENT",
         };
       });
 
+      const totalStudents = sortedStudents.length;
+      const presentCnt = sortedStudents.filter((m) => attendanceMap.has(m.id)).length;
+      const absentCnt = totalStudents - presentCnt;
+      const turnoutPct = totalStudents > 0 ? `${Math.round((presentCnt / totalStudents) * 100)}%` : "0%";
+
+      // Blank separator row
+      rows.push({
+        "#": "",
+        "Registration Number": "",
+        "Full Name": "",
+        "Year": "",
+        "Present Status": "",
+      });
+
+      // Summary section at the bottom
+      rows.push({
+        "#": "",
+        "Registration Number": "SUMMARY STATISTICS",
+        "Full Name": "",
+        "Year": "",
+        "Present Status": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "Total Students",
+        "Full Name": totalStudents,
+        "Year": "",
+        "Present Status": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "Total Present",
+        "Full Name": presentCnt,
+        "Year": "",
+        "Present Status": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "Total Absent",
+        "Full Name": absentCnt,
+        "Year": "",
+        "Present Status": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "Attendance Turnout",
+        "Full Name": turnoutPct,
+        "Year": "",
+        "Present Status": "",
+      });
+
       const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 22 },
+        { wch: 28 },
+        { wch: 14 },
+        { wch: 18 },
+      ];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Attendance Register");
 
@@ -355,20 +428,44 @@ export function SaturdayAttendancePanel() {
           .map((a) => `${a.user_id}_${a.session_id}`)
       );
 
+      // Filter student list according to selected batch filter if not "all"
+      const selectedBatch = batchFilter;
       const studentList = (members.data ?? []).filter((m) => {
         if (!m.is_active) return false;
         if (adminUsersQuery.data?.has(m.id)) return false;
+        if (selectedBatch !== "all") {
+          if (m.batch !== selectedBatch && m.year !== selectedBatch) return false;
+        }
         return true;
       });
+
+      if (!studentList.length) {
+        toast.error(`No active students found for batch "${selectedBatch}"`);
+        return;
+      }
+
+      // Sort student list by Year (numeric) then Registration Number / Full Name
+      studentList.sort((a, b) => {
+        const yA = parseYearNum(a.year);
+        const yB = parseYearNum(b.year);
+        if (yA !== yB) return yA - yB;
+        const regA = (a.registration_number || "").toLowerCase();
+        const regB = (b.registration_number || "").toLowerCase();
+        if (regA !== regB) return regA.localeCompare(regB);
+        return (a.full_name || "").toLowerCase().localeCompare((b.full_name || "").toLowerCase());
+      });
+
+      const sessionPresentCounts: Record<string, number> = {};
+      for (const sess of allSessions) {
+        sessionPresentCounts[sess.id] = 0;
+      }
 
       const rows = studentList.map((m, idx) => {
         const baseRow: Record<string, unknown> = {
           "#": idx + 1,
           "Registration Number": m.registration_number || "—",
           "Full Name": m.full_name || "—",
-          Email: m.email,
-          Batch: m.batch || "—",
-          Year: m.year || "—",
+          "Year": m.year || "—",
         };
 
         let attendedCount = 0;
@@ -378,7 +475,10 @@ export function SaturdayAttendancePanel() {
           const isPresent = presentSet.has(key);
           const colHeader = `${sess.session_date} (${sess.title})`;
           baseRow[colHeader] = isPresent ? "P" : "A";
-          if (isPresent) attendedCount++;
+          if (isPresent) {
+            attendedCount++;
+            sessionPresentCounts[sess.id] = (sessionPresentCounts[sess.id] || 0) + 1;
+          }
         }
 
         const totalSessions = allSessions.length;
@@ -391,15 +491,45 @@ export function SaturdayAttendancePanel() {
         return baseRow;
       });
 
+      // Blank separator row
+      rows.push({
+        "#": "",
+        "Registration Number": "",
+        "Full Name": "",
+        "Year": "",
+      });
+
+      // Total count summary row per session
+      const summaryRow: Record<string, unknown> = {
+        "#": "",
+        "Registration Number": "TOTAL PRESENT",
+        "Full Name": `Students: ${studentList.length}`,
+        "Year": "Per Session",
+      };
+
+      let grandTotalPresents = 0;
+      for (const sess of allSessions) {
+        const colHeader = `${sess.session_date} (${sess.title})`;
+        const count = sessionPresentCounts[sess.id] || 0;
+        summaryRow[colHeader] = `${count} Present`;
+        grandTotalPresents += count;
+      }
+      const maxPossible = studentList.length * allSessions.length;
+      const overallPct = maxPossible > 0 ? Math.round((grandTotalPresents / maxPossible) * 100) : 0;
+
+      summaryRow["Total Attended"] = grandTotalPresents;
+      summaryRow["Total Sessions"] = maxPossible;
+      summaryRow["Attendance %"] = `${overallPct}%`;
+
+      rows.push(summaryRow);
+
       const ws = XLSX.utils.json_to_sheet(rows);
 
       ws["!cols"] = [
         { wch: 5 },
-        { wch: 18 },
-        { wch: 25 },
-        { wch: 28 },
+        { wch: 20 },
+        { wch: 26 },
         { wch: 12 },
-        { wch: 10 },
         ...allSessions.map(() => ({ wch: 22 })),
         { wch: 15 },
         { wch: 15 },
@@ -407,10 +537,11 @@ export function SaturdayAttendancePanel() {
       ];
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Master All-Weeks Tracker");
-      XLSX.writeFile(wb, "Yuga_Spark_Master_All_Weeks_Attendance.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, "Master Tracker");
+      const batchLabel = selectedBatch !== "all" ? selectedBatch.replace(/[^a-zA-Z0-9_-]/g, "_") : "All_Batches";
+      XLSX.writeFile(wb, `Yuga_Spark_Master_Attendance_${batchLabel}.xlsx`);
 
-      toast.success("Master All-Weeks Attendance Tracker exported to Excel!");
+      toast.success(`Master Attendance Tracker exported for ${selectedBatch === "all" ? "All Batches" : `Batch ${selectedBatch}`}!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");
     }
