@@ -320,6 +320,20 @@ export function SaturdayAttendancePanel() {
       const absentCnt = totalStudents - presentCnt;
       const turnoutPct = totalStudents > 0 ? `${Math.round((presentCnt / totalStudents) * 100)}%` : "0%";
 
+      // Calculate Year-wise statistics
+      const yearStatsMap: Record<string, { total: number; present: number }> = {};
+      for (const m of sortedStudents) {
+        const y = m.year || "Unassigned";
+        if (!yearStatsMap[y]) {
+          yearStatsMap[y] = { total: 0, present: 0 };
+        }
+        yearStatsMap[y].total++;
+        if (attendanceMap.has(m.id)) {
+          yearStatsMap[y].present++;
+        }
+      }
+      const sortedYearKeys = Object.keys(yearStatsMap).sort((a, b) => parseYearNum(a) - parseYearNum(b));
+
       // Blank separator row
       rows.push({
         "#": "",
@@ -329,10 +343,10 @@ export function SaturdayAttendancePanel() {
         "Present Status": "",
       });
 
-      // Summary section at the bottom
+      // Overall Summary section
       rows.push({
         "#": "",
-        "Registration Number": "SUMMARY STATISTICS",
+        "Registration Number": "OVERALL SUMMARY STATISTICS",
         "Full Name": "",
         "Year": "",
         "Present Status": "",
@@ -360,16 +374,44 @@ export function SaturdayAttendancePanel() {
       });
       rows.push({
         "#": "",
-        "Registration Number": "Attendance Turnout",
+        "Registration Number": "Overall Attendance Turnout",
         "Full Name": turnoutPct,
         "Year": "",
         "Present Status": "",
       });
 
+      // Year-wise breakdown section
+      rows.push({
+        "#": "",
+        "Registration Number": "",
+        "Full Name": "",
+        "Year": "",
+        "Present Status": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "YEAR-WISE ATTENDANCE BREAKDOWN",
+        "Full Name": "Present / Total",
+        "Year": "Turnout %",
+        "Present Status": "Ratio",
+      });
+
+      for (const yKey of sortedYearKeys) {
+        const stat = yearStatsMap[yKey];
+        const yPct = stat.total > 0 ? `${Math.round((stat.present / stat.total) * 100)}%` : "0%";
+        rows.push({
+          "#": "",
+          "Registration Number": `Year: ${yKey}`,
+          "Full Name": `${stat.present} Present / ${stat.total} Total`,
+          "Year": yPct,
+          "Present Status": `${stat.present}/${stat.total}`,
+        });
+      }
+
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = [
         { wch: 6 },
-        { wch: 22 },
+        { wch: 32 },
         { wch: 28 },
         { wch: 14 },
         { wch: 18 },
@@ -522,6 +564,52 @@ export function SaturdayAttendancePanel() {
       summaryRow["Attendance %"] = `${overallPct}%`;
 
       rows.push(summaryRow);
+
+      // Calculate Year-wise Master Breakdown
+      const yearMasterStats: Record<string, { totalStudents: number; totalPresents: number }> = {};
+      for (const m of studentList) {
+        const y = m.year || "Unassigned";
+        if (!yearMasterStats[y]) {
+          yearMasterStats[y] = { totalStudents: 0, totalPresents: 0 };
+        }
+        yearMasterStats[y].totalStudents++;
+        for (const sess of allSessions) {
+          if (presentSet.has(`${m.id}_${sess.id}`)) {
+            yearMasterStats[y].totalPresents++;
+          }
+        }
+      }
+      const sortedMasterYearKeys = Object.keys(yearMasterStats).sort((a, b) => parseYearNum(a) - parseYearNum(b));
+
+      rows.push({
+        "#": "",
+        "Registration Number": "",
+        "Full Name": "",
+        "Year": "",
+      });
+      rows.push({
+        "#": "",
+        "Registration Number": "YEAR-WISE BREAKDOWN",
+        "Full Name": "Student Count",
+        "Year": "Total Attended",
+        "Total Attended": "Max Possible",
+        "Attendance %": "Turnout %",
+      });
+
+      for (const yKey of sortedMasterYearKeys) {
+        const stat = yearMasterStats[yKey];
+        const yearMaxPoss = stat.totalStudents * allSessions.length;
+        const yPct = yearMaxPoss > 0 ? `${Math.round((stat.totalPresents / yearMaxPoss) * 100)}%` : "0%";
+        rows.push({
+          "#": "",
+          "Registration Number": `Year: ${yKey}`,
+          "Full Name": `${stat.totalStudents} Students`,
+          "Year": `${stat.totalPresents} / ${yearMaxPoss}`,
+          "Total Attended": stat.totalPresents,
+          "Total Sessions": yearMaxPoss,
+          "Attendance %": yPct,
+        });
+      }
 
       const ws = XLSX.utils.json_to_sheet(rows);
 
