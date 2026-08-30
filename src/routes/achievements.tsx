@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Landmark, ArrowLeft, Lock, ArrowRight } from "lucide-react";
-import { SparkMark } from "@/components/SparkMark";
-import { Button } from "@/components/ui/button";
 import { ClubLegacyShowcase } from "@/components/ClubLegacyShowcase";
 
 const TITLE = "Club Legacy & Achievements — Yuga Spark";
@@ -23,58 +21,56 @@ export const Route = createFileRoute("/achievements")({
 
 function AchievementsPublicPage() {
   return (
-    <div className="min-h-screen w-full bg-background text-foreground selection:bg-primary/20 flex flex-col justify-between">
+    <div className="cofounder-landing min-h-screen w-full selection:bg-[#1890f0]/20 flex flex-col justify-between overflow-x-hidden">
       {/* Top Header Navigation */}
-      <header className="sticky top-0 z-40 border-b border-border bg-card/70 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5">
+      <header className="sticky top-0 z-40 border-b border-[#202020]/15 bg-[#f5f5f2]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <Link to="/">
-              <SparkMark />
+            <Link to="/" className="flex items-center gap-2 text-[#171717] no-underline">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#1890f0] inline-block" />
+              <span className="font-sans text-xl font-medium tracking-tight text-[#171717]">
+                Yuga Spark
+              </span>
             </Link>
           </div>
-          <div className="flex items-center gap-2.5">
-            <Button asChild size="sm" variant="ghost" className="text-xs font-semibold gap-1.5">
-              <Link to="/">
-                <ArrowLeft className="h-3.5 w-3.5" /> Back to Home
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="ghost" className="text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground">
-              <Link to="/auth">
-                <Lock className="h-3.5 w-3.5 text-primary" /> Admin Login
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="text-xs font-semibold gap-1.5 shadow-sm">
-              <Link to="/auth">
-                Student Sign In <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="cofounder-btn-secondary text-xs px-3.5 py-1.5 flex items-center gap-1.5">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Home</span>
+            </Link>
+            <Link to="/auth" className="cofounder-btn-primary text-xs px-4 py-2 flex items-center gap-1.5">
+              <span>Student Sign In</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-10 space-y-8">
-        <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-            <Landmark className="h-3.5 w-3.5" /> Club Achievements & Heritage
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-10 space-y-8">
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1890f0]/10 border border-[#1890f0]/20 text-[#1890f0] text-xs font-semibold">
+            <Landmark className="h-3.5 w-3.5" />
+            <span>Club Achievements & Heritage</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+          <h1 className="cofounder-h1 text-3xl sm:text-4xl">
             RGMCET Yuga Spark Legacy
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-[#666660]">
             Explore club achievements, hackathon podium finishes, event photo gallery, and lead teams.
           </p>
         </div>
 
-        {/* Optimized Legacy Showcase Component */}
+        {/* Cofounder Style Legacy Showcase Component */}
         <ClubLegacyShowcase />
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card/40 py-4 px-6 text-center shrink-0">
-        <p className="text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} Yuga Spark · RGMCET Hackathon Club · Developed by <strong className="text-foreground">Jaya Krushna</strong> and <strong className="text-foreground">Hemanth</strong>
-        </p>
+      <footer className="border-t border-[#202020]/10 bg-[#eaeae6] py-8 px-6 text-center shrink-0">
+        <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between text-xs text-[#666660] gap-4">
+          <p>© {new Date().getFullYear()} Yuga Spark · RGMCET Hackathon Club · All rights reserved.</p>
+          <p>Developed by <strong className="text-[#171717]">Jaya Krushna</strong> and <strong className="text-[#171717]">Hemanth</strong></p>
+        </div>
       </footer>
     </div>
   );

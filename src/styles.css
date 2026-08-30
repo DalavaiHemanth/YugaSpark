@@ -256,3 +256,112 @@
     animation: none;
   }
 }
+
+/* Cofounder.co Design Spec Exact Tokens & Utilities */
+:root {
+  --cofounder-bg: #f5f5f2;
+  --cofounder-text: #171717;
+  --cofounder-surface-alt: #1a6fd1;
+  --cofounder-card: #fbfbf8;
+  --cofounder-accent: #1890f0;
+  --cofounder-link-inline: #262323;
+  --cofounder-border: #202020;
+  --cofounder-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.cofounder-landing {
+  background-color: var(--cofounder-bg);
+  color: var(--cofounder-text);
+  font-family: var(--cofounder-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cofounder-card {
+  background-color: #fbfbf8;
+  border-radius: 7.142px;
+  box-shadow: rgb(255, 255, 255) 0px 0px 0px 0.714px inset, rgba(0, 0, 0, 0.08) 0px 0px 0px 0.714px, rgba(0, 0, 0, 0.04) 0px 0px 0px 0px;
+}
+
+.cofounder-btn-primary {
+  background-color: #1890f0;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 150ms ease-out, transform 150ms ease-out;
+}
+.cofounder-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.cofounder-btn-primary:active {
+  filter: brightness(0.95);
+}
+
+.cofounder-btn-secondary {
+  background-color: #f5f5f2;
+  color: #171717;
+  border: 1px solid #202020;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 3px 0px, rgba(255, 255, 255, 0.35) 0px 0px 0.357px 1.5px inset;
+  transition: background-color 150ms ease-out;
+}
+.cofounder-btn-secondary:hover {
+  background-color: rgba(23, 23, 23, 0.08);
+}
+
+.cofounder-h1 {
+  font-family: var(--cofounder-font);
+  font-size: 46px;
+  line-height: 1.08;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  color: #171717;
+}
+
+.cofounder-h2 {
+  font-family: var(--cofounder-font);
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  color: #171717;
+}
+
+.cofounder-eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: #666660;
+}
+
+.cofounder-link {
+  color: #262323;
+  position: relative;
+  transition: color 150ms ease;
+}
+.cofounder-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0%;
+  height: 1px;
+  background-color: #1890f0;
+  transition: width 200ms ease;
+}
+.cofounder-link:hover::after {
+  width: 100%;
+}
+
