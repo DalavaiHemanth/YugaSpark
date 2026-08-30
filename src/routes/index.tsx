@@ -13,9 +13,9 @@ import {
 import { ClubLegacyShowcase } from "@/components/ClubLegacyShowcase";
 import { AnimatedHeroBackground } from "@/components/AnimatedHeroBackground";
 
-const TITLE = "Yuga Spark — RGMCET Hackathon Club Portal";
+const TITLE = "Yuga Spark — The Hackathon Club | Department of Data Science";
 const DESCRIPTION =
-  "Official Innovation & Hackathon Portal for Rajeev Gandhi Memorial College of Engineering & Technology (RGMCET).";
+  "Department of Data Science — Where there is data, there is data Science. Official Innovation & Hackathon Portal for RGMCET.";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -125,12 +125,17 @@ export function Index() {
             <div className="relative z-10 my-auto pt-6 sm:pt-10 max-w-[560px] ml-auto">
               <div className="bg-[#f5f5f2]/90 backdrop-blur-md border border-[#202020]/15 p-6 sm:p-8 rounded-[20px] space-y-5 shadow-xl text-[#171717]">
                 <h1 className="cofounder-h1 text-3xl sm:text-[44px] leading-[1.08] font-normal text-[#171717] tracking-tight">
-                  Yuga Spark empowers RGMCET student builders to win hackathons
+                  Yuga Spark — The Hackathon Club
                 </h1>
 
-                <p className="text-[15px] sm:text-[16px] leading-[1.4] text-[#171717]/80">
-                  Start with an innovation roadmap, then form engineering squads, track Saturday build sprints, leaderboards, and verified credentials.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-[16px] sm:text-[18px] font-semibold text-[#1890f0] uppercase tracking-wide">
+                    Department of Data Science
+                  </p>
+                  <p className="text-[15px] sm:text-[17px] leading-[1.4] text-[#171717]/80 font-medium italic">
+                    &ldquo;Where there is data &ndash; There is data Science&rdquo;
+                  </p>
+                </div>
 
                 {/* CTAs side-by-side */}
                 <div className="flex flex-wrap items-center gap-3 pt-1">
