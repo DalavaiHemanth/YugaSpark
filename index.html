@@ -45,7 +45,18 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- SEO fallback for crawlers that don't execute JavaScript -->
+    <noscript>
+      <h1>Yuga Spark — RGMCET Hackathon Club Portal</h1>
+      <p>The official Hackathon &amp; Innovation Club portal of RGMCET, Department of Data Science. Compete, collaborate, and grow.</p>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/achievements">Achievements</a>
+        <a href="/auth">Sign In</a>
+      </nav>
+    </noscript>
+  </div>
   <script type="module" src="/src/entry-client.tsx"></script>
 </body>
 
