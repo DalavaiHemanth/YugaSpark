@@ -1,8 +1,21 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /chat
+Disallow: /playbook
+Disallow: /squads
+Disallow: /leaderboard
+Disallow: /notices
+Disallow: /certificates
+Disallow: /badge
 
 User-agent: Bingbot
 Allow: /
+Disallow: /dashboard
+Disallow: /admin
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +25,9 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /profile
+Disallow: /onboarding
+
+Sitemap: https://yuga-spark.vercel.app/sitemap.xml
