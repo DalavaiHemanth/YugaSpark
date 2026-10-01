@@ -1,0 +1,47 @@
+# Yuga Spark
+
+> The official Hackathon & Innovation Club portal of RGMCET (Rajeev Gandhi Memorial College of Engineering & Technology), Department of Data Science.
+
+Yuga Spark is a campus innovation platform that powers hackathon teams, squad formation, leaderboards, playbooks, certificates, and event management for the RGMCET hackathon club.
+
+## About
+
+- **Organization**: RGMCET (Autonomous), Nandyal, Andhra Pradesh, India
+- **Department**: Computer Science & Engineering (Data Science)
+- **Tagline**: "Where there is data — There is data Science"
+- **Website**: https://yuga-spark.vercel.app
+- **Developers**: Jaya Krushna and Hemanth
+
+## Public Pages
+
+- [Home](https://yuga-spark.vercel.app/): Landing page with hero section, club capabilities overview, squad finder, leaderboard preview, and club legacy showcase
+- [Achievements](https://yuga-spark.vercel.app/achievements): Club achievements, hackathon podium finishes, event photo gallery, and lead teams through the years
+- [Sign In](https://yuga-spark.vercel.app/auth): Authentication page for club members to access the portal
+
+## Portal Features (Authenticated)
+
+The following features are available to signed-in club members:
+
+- **Dashboard**: Personal activity overview and quick stats
+- **Squads**: Form and manage multi-disciplinary hackathon teams across CSE and ECE branches
+- **Leaderboard**: Club-wide rankings based on participation and achievements
+- **Playbook**: Resources, guides, and hackathon preparation materials
+- **Notices**: Club announcements and event notifications
+- **Certificates**: Digital certificates for hackathon participation and wins
+- **Badges**: Achievement badges earned through club activities
+- **Chat**: Club communication channel
+- **Admin Panel**: Administrative tools for club leads and faculty
+
+## Capabilities
+
+- Squad Formation: Connect frontend developers, AI/ML engineers, and UI designers across branches
+- Hackathon Tracking: Discover hackathons and track participation
+- Attendance: Real-time Saturday sprint attendance tracking
+- Leaderboard: Points-based ranking system for club members
+- Certificate Generation: Digital certificates for events and achievements
+- Event Management: Club notices, announcements, and event coordination
+
+## Links
+
+- [Sitemap](https://yuga-spark.vercel.app/sitemap.xml)
+- [llms-full.txt](https://yuga-spark.vercel.app/llms-full.txt)

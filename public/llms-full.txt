@@ -1,0 +1,121 @@
+# Yuga Spark — Full Context for AI/LLM Systems
+
+> The official Hackathon & Innovation Club portal of RGMCET (Rajeev Gandhi Memorial College of Engineering & Technology), Department of Data Science, Nandyal, Andhra Pradesh, India.
+
+## Overview
+
+Yuga Spark is a full-featured campus innovation platform purpose-built for the RGMCET hackathon club. It serves as the digital hub for student hackers to form squads, compete in hackathons, earn recognition, and access club resources. The platform is developed and maintained by students Jaya Krushna and Hemanth.
+
+**Motto**: "Where there is data — There is data Science"
+
+---
+
+## Site Structure
+
+### Public Pages (No Authentication Required)
+
+#### Homepage (`/`)
+The landing page for Yuga Spark featuring:
+- **Hero Section**: Animated 3D background with club branding and call-to-action buttons
+- **Social Proof Strip**: RGMCET Autonomous and CSE (Data Science) affiliation
+- **Signature Capabilities Grid**: Three-card layout showcasing:
+  - Campus Innovation OS — Portal overview for discovering hackathons, forming squads, and tracking attendance
+  - Squad Finder — Tool for forming multi-disciplinary hackathon teams across CSE and ECE branches (frontend developers, AI/ML engineers, UI designers)
+  - Leaderboard & Recognition — Points-based ranking system with trophies and achievement badges
+- **Club Legacy Showcase**: Historical highlights, achievements, and notable moments
+
+#### Achievements (`/achievements`)
+Dedicated page showcasing the RGMCET Yuga Spark Legacy:
+- Club achievements and milestones
+- Hackathon podium finishes
+- Event photo gallery
+- Lead teams through the years
+- Historical records of club activities
+
+#### Authentication (`/auth`)
+Sign-in page for club members with:
+- Email/password authentication via Supabase
+- Secure access to the member portal
+- New member signup (when enabled by admin)
+
+### Authenticated Portal (Requires Sign-In)
+
+These pages are only accessible to registered club members:
+
+#### Dashboard (`/dashboard`)
+Personal activity overview with quick stats, recent notifications, and activity summary.
+
+#### Squads (`/squads`)
+Team formation and management system:
+- Browse existing squads
+- Create new hackathon teams
+- Connect with members across different branches and skill sets
+- Team composition management
+
+#### Leaderboard (`/leaderboard`)
+Club-wide ranking system:
+- Points-based rankings for all members
+- Achievement tracking
+- Participation metrics
+- Competition results
+
+#### Playbook (`/playbook`)
+Resources and preparation materials:
+- Hackathon guides and best practices
+- Technical resources
+- Past competition insights
+- Strategy documents
+
+#### Notices (`/notices`)
+Club communication center:
+- Official announcements
+- Event notifications
+- Important updates from club administration
+
+#### Certificates (`/certificates`)
+Digital certificate management:
+- Hackathon participation certificates
+- Winner certificates
+- Event completion certificates
+
+#### Badges (`/badge`)
+Achievement badge system:
+- Earned badges from club activities
+- Special recognition badges
+- Milestone achievements
+
+#### Chat (`/chat`)
+Club communication channel for real-time messaging between members.
+
+#### Profile (`/profile`)
+Personal profile management for club members.
+
+#### Admin Panel (`/admin`)
+Administrative tools for club leads and faculty:
+- Member management
+- Event creation and management
+- Certificate generation
+- Announcement publishing
+- Club settings and configuration
+
+---
+
+## Technical Stack
+
+- **Frontend**: React with TypeScript
+- **Routing**: TanStack Router
+- **Styling**: Tailwind CSS with custom design system
+- **Backend**: Supabase (Auth, Database, Storage)
+- **Hosting**: Vercel
+- **Build Tool**: Vite
+
+---
+
+## Contact & Links
+
+- **Website**: https://yuga-spark.vercel.app
+- **Institution**: RGMCET (Autonomous), Nandyal, Andhra Pradesh, India
+- **Department**: Computer Science & Engineering (Data Science)
+- **Sitemap**: https://yuga-spark.vercel.app/sitemap.xml
+- **robots.txt**: https://yuga-spark.vercel.app/robots.txt
+- **llms.txt**: https://yuga-spark.vercel.app/llms.txt
