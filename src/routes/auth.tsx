@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth";
 
 const TITLE = "Sign in — Yuga Spark";
 const DESCRIPTION = "Sign in or join the Yuga Spark hackathon club portal at RGMCET.";
+const KEYWORDS =
+  "Yuga Spark login, RGMCET sign in, hackathon club portal, student login, Yuga Spark registration";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/auth")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

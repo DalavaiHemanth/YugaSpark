@@ -17,12 +17,15 @@ import {
 
 const TITLE = "Leaderboard — Yuga Spark";
 const DESCRIPTION = "Club-wide and per-hackathon rankings for Yuga Spark builders.";
+const KEYWORDS =
+  "Yuga Spark leaderboard, hackathon rankings, club leaderboard, student rankings, coding competition scores, RGMCET";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

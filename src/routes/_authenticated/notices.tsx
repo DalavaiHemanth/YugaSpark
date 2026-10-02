@@ -28,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 const TITLE = "Notice board — Yuga Spark";
 const DESCRIPTION = "Announcements, outside hackathons, useful links, club polls and Q&A.";
+const KEYWORDS =
+  "Yuga Spark announcements, club notices, hackathon updates, club polls, RGMCET notices, hackathon news";
 
 const EMOJIS = ["👍", "🔥", "🚀", "❤️"];
 
@@ -36,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/notices")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

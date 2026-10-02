@@ -79,6 +79,8 @@ import { AchievementsPanel } from "@/components/admin/AchievementsPanel";
 
 const TITLE = "Admin console — Yuga Spark";
 const DESCRIPTION = "Manage Yuga Spark members, hackathons and club access settings.";
+const KEYWORDS =
+  "Yuga Spark admin, club management, hackathon admin, member management, RGMCET admin console";
 const DOMAIN = "@rgmcet.edu.in";
 
 const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
@@ -110,6 +112,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

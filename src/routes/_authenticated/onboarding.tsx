@@ -18,12 +18,15 @@ import {
 
 const TITLE = "Complete your profile — Yuga Spark";
 const DESCRIPTION = "Fill in your club profile to unlock the Yuga Spark dashboard and badge.";
+const KEYWORDS =
+  "Yuga Spark onboarding, new member setup, club profile setup, RGMCET hackathon club registration";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

@@ -11,12 +11,15 @@ import { Button } from "@/components/ui/button";
 
 const TITLE = "My club badge — Yuga Spark";
 const DESCRIPTION = "Your personal Yuga Spark member badge with a scannable QR code.";
+const KEYWORDS =
+  "Yuga Spark badge, member badge, QR code badge, club membership card, RGMCET club badge";
 
 export const Route = createFileRoute("/_authenticated/badge")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

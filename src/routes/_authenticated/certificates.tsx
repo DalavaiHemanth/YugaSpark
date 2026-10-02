@@ -12,12 +12,15 @@ import { downloadCertificate, fetchCertificateConfig } from "@/lib/certificate";
 
 const TITLE = "Certificates — Yuga Spark";
 const DESCRIPTION = "Download participation and winner certificates for every hackathon you attended.";
+const KEYWORDS =
+  "hackathon certificates, participation certificate, winner certificate, Yuga Spark certificate download, RGMCET";
 
 export const Route = createFileRoute("/_authenticated/certificates")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

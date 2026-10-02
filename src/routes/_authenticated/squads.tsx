@@ -20,12 +20,15 @@ import {
 
 const TITLE = "Squad finder — Yuga Spark";
 const DESCRIPTION = "Find teammates and build your hackathon squad inside the Yuga Spark club.";
+const KEYWORDS =
+  "hackathon squad, find teammates, team builder, hackathon team formation, Yuga Spark squads, RGMCET";
 
 export const Route = createFileRoute("/_authenticated/squads")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

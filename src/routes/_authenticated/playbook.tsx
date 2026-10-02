@@ -53,12 +53,15 @@ import {
 
 const TITLE = "Playbook — Yuga Spark";
 const DESCRIPTION = "Curated hackathon resources, templates, code snippets and master roadmaps from Yuga Spark.";
+const KEYWORDS =
+  "hackathon resources, hackathon templates, coding snippets, learning roadmap, Yuga Spark playbook, hackathon preparation, RGMCET";
 
 export const Route = createFileRoute("/_authenticated/playbook")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

@@ -19,12 +19,15 @@ import {
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 const TITLE = "Profile — Yuga Spark";
 const DESCRIPTION = "Update your Yuga Spark member details, photo, resume and password.";
+const KEYWORDS =
+  "Yuga Spark profile, member profile, update profile, hackathon club profile, RGMCET student profile";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

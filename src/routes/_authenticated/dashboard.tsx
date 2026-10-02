@@ -26,12 +26,15 @@ import { Badge } from "@/components/ui/badge";
 
 const TITLE = "Dashboard — Yuga Spark";
 const DESCRIPTION = "Upcoming Yuga Spark hackathons, your registrations and club shortcuts.";
+const KEYWORDS =
+  "Yuga Spark dashboard, upcoming hackathons, hackathon registration, club events, RGMCET hackathon schedule";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

@@ -11,12 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 
 const TITLE = "Ask an admin — Yuga Spark";
 const DESCRIPTION = "Direct line to the Yuga Spark club admins for doubts and requests.";
+const KEYWORDS =
+  "Yuga Spark chat, ask admin, club support, hackathon help, RGMCET club contact";
 
 export const Route = createFileRoute("/_authenticated/chat")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

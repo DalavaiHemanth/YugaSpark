@@ -5,6 +5,8 @@ import { ClubLegacyShowcase } from "@/components/ClubLegacyShowcase";
 const TITLE = "Club Legacy & Achievements — Yuga Spark";
 const DESCRIPTION =
   "Official showcase of student moments, hackathon podium finishes, photo gallery, and lead teams through the years at RGMCET Yuga Spark.";
+const KEYWORDS =
+  "Yuga Spark achievements, RGMCET hackathon winners, club legacy, hackathon gallery, student achievements, data science club, RGMCET Nandyal";
 
 export const Route = createFileRoute("/achievements")({
   ssr: false,
@@ -12,6 +14,7 @@ export const Route = createFileRoute("/achievements")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],

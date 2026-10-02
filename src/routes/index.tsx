@@ -16,6 +16,8 @@ import { AnimatedHeroBackground } from "@/components/AnimatedHeroBackground";
 const TITLE = "Yuga Spark — The Hackathon Club | Department of Data Science";
 const DESCRIPTION =
   "Department of Data Science — Where there is data, there is data Science. Official Innovation & Hackathon Portal for RGMCET.";
+const KEYWORDS =
+  "Yuga Spark, RGMCET hackathon club, data science department, hackathon portal, coding competitions, innovation club, RGMCET Nandyal, student hackathons, tech club";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
     ],
