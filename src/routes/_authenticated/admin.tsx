@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ADMIN_NAV, SECTION_KEYS, type SectionKey } from "@/lib/admin-nav";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, Component, type ReactNode } from "react";
+import { useEffect, useState, Component, lazy, Suspense, type ReactNode } from "react";
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +58,9 @@ import { ResourcesPanel } from "@/components/admin/ResourcesPanel";
 import { NoticesPanel } from "@/components/admin/NoticesPanel";
 import { InboxPanel } from "@/components/admin/InboxPanel";
 import { MailPanel } from "@/components/admin/MailPanel";
-import { InsightsPanel } from "@/components/admin/InsightsPanel";
+const InsightsPanel = lazy(() =>
+  import("@/components/admin/InsightsPanel").then((m) => ({ default: m.InsightsPanel }))
+);
 import { Button } from "@/components/ui/button";
 import { AuditPanel } from "@/components/admin/AuditPanel";
 import { Input } from "@/components/ui/input";
@@ -93,7 +95,11 @@ const RENDERERS: Record<SectionKey, (query?: string) => React.ReactNode> = {
   inbox: () => <InboxPanel />,
   hackathons: (query) => <HackathonsPanel initialQuery={query} />,
   results: () => <ResultsPanel />,
-  insights: () => <InsightsPanel />,
+  insights: () => (
+    <Suspense fallback={<p className="text-sm text-muted-foreground p-4">Loading insights…</p>}>
+      <InsightsPanel />
+    </Suspense>
+  ),
   playbook: () => <ResourcesPanel />,
   notices: () => <NoticesPanel />,
   achievements: () => <AchievementsPanel />,

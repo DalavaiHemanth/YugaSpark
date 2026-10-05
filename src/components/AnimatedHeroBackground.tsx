@@ -137,8 +137,8 @@ export function AnimatedHeroBackground({ children }: AnimatedHeroBackgroundProps
           className="w-full h-full object-cover object-center"
           fetchPriority="high"
           decoding="async"
-          width={1374}
-          height={768}
+          width={1200}
+          height={671}
         />
 
         {/* Animated Sun Glow Lens Flare */}

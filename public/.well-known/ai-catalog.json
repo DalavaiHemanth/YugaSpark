@@ -1,0 +1,49 @@
+{
+  "$schema": "https://agenticresourcediscovery.org/schema/v1",
+  "name": "Yuga Spark",
+  "description": "Official Hackathon & Innovation Club Portal of RGMCET, Department of Data Science, Nandyal. Compete in hackathons, collaborate with peers, earn certificates and climb the leaderboard.",
+  "url": "https://yuga-spark.vercel.app",
+  "provider": {
+    "name": "Yuga Spark — RGMCET",
+    "url": "https://yuga-spark.vercel.app"
+  },
+  "resources": [
+    {
+      "type": "page",
+      "name": "Home",
+      "description": "Landing page with club overview, capabilities, and legacy showcase",
+      "url": "https://yuga-spark.vercel.app/"
+    },
+    {
+      "type": "page",
+      "name": "Achievements",
+      "description": "Club achievements and hackathon wins across academic years",
+      "url": "https://yuga-spark.vercel.app/achievements"
+    },
+    {
+      "type": "page",
+      "name": "Sign In",
+      "description": "Authentication page for students and admins",
+      "url": "https://yuga-spark.vercel.app/auth"
+    },
+    {
+      "type": "document",
+      "name": "LLMs Full",
+      "description": "Comprehensive information about Yuga Spark for large language models",
+      "url": "https://yuga-spark.vercel.app/llms-full.txt"
+    },
+    {
+      "type": "document",
+      "name": "LLMs Summary",
+      "description": "Summary information about Yuga Spark for large language models",
+      "url": "https://yuga-spark.vercel.app/llms.txt"
+    }
+  ],
+  "capabilities": [
+    "hackathon-management",
+    "team-formation",
+    "leaderboard",
+    "certificate-verification",
+    "attendance-tracking"
+  ]
+}

@@ -1,6 +1,10 @@
+import { lazy, Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Landmark, ArrowLeft, Lock, ArrowRight } from "lucide-react";
-import { ClubLegacyShowcase } from "@/components/ClubLegacyShowcase";
+
+const ClubLegacyShowcase = lazy(() =>
+  import("@/components/ClubLegacyShowcase").then((m) => ({ default: m.ClubLegacyShowcase }))
+);
 
 const TITLE = "Club Legacy & Achievements — Yuga Spark";
 const DESCRIPTION =
@@ -65,7 +69,15 @@ function AchievementsPublicPage() {
         </div>
 
         {/* Cofounder Style Legacy Showcase Component */}
-        <ClubLegacyShowcase />
+        <Suspense
+          fallback={
+            <div className="py-16 text-center text-sm text-[#666660] animate-pulse">
+              Loading RGMCET Yuga Spark Legacy Showcase…
+            </div>
+          }
+        >
+          <ClubLegacyShowcase />
+        </Suspense>
       </main>
 
       {/* Footer */}

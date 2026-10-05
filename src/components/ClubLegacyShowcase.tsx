@@ -249,6 +249,7 @@ export function ClubLegacyShowcase() {
                             src={item.image_url}
                             alt={item.title}
                             loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                           <span className="absolute top-2 right-2 bg-[#1890f0] text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow">
@@ -300,6 +301,8 @@ export function ClubLegacyShowcase() {
                           <img
                             src={lead.image_url}
                             alt={lead.person_name || lead.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -342,6 +345,7 @@ export function ClubLegacyShowcase() {
                           src={img.image_url}
                           alt={img.title || "User photo"}
                           loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       )}
@@ -363,6 +367,10 @@ export function ClubLegacyShowcase() {
               <img
                 src={primaryFeaturePhoto}
                 alt="RGMCET Yuga Spark Legacy Feature Photo"
+                loading="lazy"
+                decoding="async"
+                width={380}
+                height={507}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Users,
@@ -10,8 +10,11 @@ import {
   Lock,
   Landmark,
 } from "lucide-react";
-import { ClubLegacyShowcase } from "@/components/ClubLegacyShowcase";
 import { AnimatedHeroBackground } from "@/components/AnimatedHeroBackground";
+
+const ClubLegacyShowcase = lazy(() =>
+  import("@/components/ClubLegacyShowcase").then((m) => ({ default: m.ClubLegacyShowcase }))
+);
 
 const TITLE = "Yuga Spark — The Hackathon Club | Department of Data Science";
 const DESCRIPTION =
@@ -297,8 +300,8 @@ export function Index() {
                   className="w-full h-full object-cover"
                   loading="lazy"
                   decoding="async"
-                  width={896}
-                  height={1200}
+                  width={440}
+                  height={588}
                 />
               </div>
             </div>
@@ -307,7 +310,15 @@ export function Index() {
 
         {/* ━━━ SECTION 6 — DEDICATED CLUB LEGACY SHOWCASE SECTION ━━━ */}
         <section id="legacy" className="p-3 sm:p-6 w-full max-w-[1440px] mx-auto scroll-mt-24">
-          <ClubLegacyShowcase />
+          <Suspense
+            fallback={
+              <div className="py-16 text-center text-sm text-[#666660] animate-pulse">
+                Loading RGMCET Yuga Spark Legacy Showcase…
+              </div>
+            }
+          >
+            <ClubLegacyShowcase />
+          </Suspense>
         </section>
 
         {/* ━━━ SECTION 7 — FINAL CTA ━━━ */}
