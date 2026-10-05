@@ -89,7 +89,7 @@ export function ClubLegacyShowcase() {
   const primaryFeaturePhoto =
     activeYear?.cover_image_url ||
     allItems.find((item) => item.image_url)?.image_url ||
-    "/rgmcet_hackathon_win.jpg";
+    "/rgmcet_hackathon_win.webp";
 
   if (yearsQuery.isLoading) {
     return (

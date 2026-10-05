@@ -132,9 +132,13 @@ export function AnimatedHeroBackground({ children }: AnimatedHeroBackgroundProps
         }}
       >
         <img
-          src="/cofounder_hero_landscape.jpg"
+          src="/cofounder_hero_landscape.webp"
           alt="Yuga Spark Animated Pixel Art Landscape"
           className="w-full h-full object-cover object-center"
+          fetchPriority="high"
+          decoding="async"
+          width={1374}
+          height={768}
         />
 
         {/* Animated Sun Glow Lens Flare */}

@@ -216,9 +216,13 @@ export function Index() {
               {/* Scaled Mini Background Artwork */}
               <div className="relative mt-6 h-36 rounded-[8px] overflow-hidden border border-[#202020]/10">
                 <img
-                  src="/cofounder_hero_landscape.jpg"
+                  src="/cofounder_hero_landscape.webp"
                   alt="Mini Hero Preview"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={1374}
+                  height={768}
                 />
                 <div className="absolute bottom-2 left-2 bg-[#171717]/80 backdrop-blur-md text-white text-[10px] font-mono px-2.5 py-1 rounded-full">
                   RGMCET Builders
@@ -288,9 +292,13 @@ export function Index() {
               {/* Framed Pixel Art Sunflower Card Artwork */}
               <div className="w-32 sm:w-36 aspect-[3/4] rounded-[8px] overflow-hidden border border-[#202020]/20 shadow-md shrink-0">
                 <img
-                  src="/cofounder_sunflower_badge.jpg"
+                  src="/cofounder_sunflower_badge.webp"
                   alt="Sunflower Badge Artwork"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={896}
+                  height={1200}
                 />
               </div>
             </div>
@@ -341,7 +349,7 @@ export function Index() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Navigation</h4>
+            <p className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Navigation</p>
             <ul className="space-y-2 text-xs text-[#666660]">
               <li><a href="#hero" className="hover:text-[#171717]">Start</a></li>
               <li><a href="#capabilities" className="hover:text-[#171717]">Capabilities</a></li>
@@ -350,7 +358,7 @@ export function Index() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Portal Access</h4>
+            <p className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Portal Access</p>
             <ul className="space-y-2 text-xs text-[#666660]">
               <li><Link to="/auth" className="hover:text-[#171717]">Student Sign In</Link></li>
               <li><Link to="/auth" className="hover:text-[#171717]">Admin Portal</Link></li>
@@ -358,7 +366,7 @@ export function Index() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Department</h4>
+            <p className="text-xs uppercase tracking-wider font-semibold text-[#171717]">Department</p>
             <p className="text-xs text-[#666660] leading-relaxed">
               Dept of Computer Science & Engineering (Data Science), RGMCET Nandyal.
             </p>
