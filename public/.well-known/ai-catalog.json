@@ -1,48 +1,33 @@
 {
-  "$schema": "https://agenticresourcediscovery.org/schema/v1",
   "specVersion": "1.0",
   "host": {
-    "displayName": "Yuga Spark — RGMCET",
+    "displayName": "Yuga Spark",
     "identifier": "did:web:yuga-spark.vercel.app"
   },
   "entries": [
     {
-      "identifier": "urn:ai:yuga-spark.vercel.app:page:home",
-      "displayName": "Home",
-      "description": "Landing page with club overview, capabilities, and legacy showcase",
-      "type": "page",
-      "url": "https://yuga-spark.vercel.app/"
+      "identifier": "urn:air:yugaspark:portal:main-agent",
+      "displayName": "Yuga Spark Portal Assistant",
+      "description": "Official AI assistant for Yuga Spark Hackathon & Innovation Club at RGMCET, Department of Data Science.",
+      "type": "application/agent-card+json",
+      "url": "https://yuga-spark.vercel.app/agent-card.json",
+      "representativeQueries": [
+        "What is Yuga Spark at RGMCET?",
+        "How do I join hackathons and form squads?",
+        "Show student achievements and leaderboard"
+      ]
     },
     {
-      "identifier": "urn:ai:yuga-spark.vercel.app:page:achievements",
-      "displayName": "Achievements",
-      "description": "Club achievements and hackathon wins across academic years",
-      "type": "page",
-      "url": "https://yuga-spark.vercel.app/achievements"
-    },
-    {
-      "identifier": "urn:ai:yuga-spark.vercel.app:page:auth",
-      "displayName": "Sign In",
-      "description": "Authentication page for students and admins",
-      "type": "page",
-      "url": "https://yuga-spark.vercel.app/auth"
-    },
-    {
-      "identifier": "urn:ai:yuga-spark.vercel.app:doc:llms-full",
-      "displayName": "LLMs Full Documentation",
-      "description": "Comprehensive information about Yuga Spark for large language models",
-      "type": "document",
-      "url": "https://yuga-spark.vercel.app/llms-full.txt"
-    },
-    {
-      "identifier": "urn:ai:yuga-spark.vercel.app:doc:llms",
-      "displayName": "LLMs Summary",
-      "description": "Summary information about Yuga Spark for large language models",
-      "type": "document",
-      "url": "https://yuga-spark.vercel.app/llms.txt"
+      "identifier": "urn:air:yugaspark:skills:hackathon-guide",
+      "displayName": "RGMCET Hackathon Skills & Guide",
+      "description": "Guides, event schedules, and documentation for student participants and innovation tracks.",
+      "type": "text/markdown; profile=\"urn:air:agent-skills\"",
+      "url": "https://yuga-spark.vercel.app/llms-full.txt",
+      "representativeQueries": [
+        "RGMCET hackathon rules and guidelines",
+        "Upcoming Saturday sprint schedule",
+        "Verify certificates and team credentials"
+      ]
     }
-  ],
-  "name": "Yuga Spark",
-  "description": "Official Hackathon & Innovation Club Portal of RGMCET, Department of Data Science, Nandyal. Compete in hackathons, collaborate with peers, earn certificates and climb the leaderboard.",
-  "url": "https://yuga-spark.vercel.app"
+  ]
 }

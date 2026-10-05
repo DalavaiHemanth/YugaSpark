@@ -1,0 +1,13 @@
+{
+  "name": "Yuga Spark Portal Assistant",
+  "description": "Official AI assistant for Yuga Spark Hackathon & Innovation Club at RGMCET, Department of Data Science.",
+  "url": "https://yuga-spark.vercel.app",
+  "version": "1.0.0",
+  "capabilities": [
+    "hackathon-information",
+    "squad-formation",
+    "leaderboard-tracking",
+    "certificate-verification",
+    "campus-legacy-showcase"
+  ]
+}

@@ -56,13 +56,23 @@ export function AnimatedHeroBackground({ children }: AnimatedHeroBackgroundProps
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.offsetWidth || 1200);
-    let height = (canvas.height = canvas.offsetHeight || 720);
+    let width = 1080;
+    let height = 604;
+    canvas.width = width;
+    canvas.height = height;
+
+    requestAnimationFrame(() => {
+      if (!canvas) return;
+      if (canvas.offsetWidth && canvas.offsetHeight) {
+        width = canvas.width = canvas.offsetWidth;
+        height = canvas.height = canvas.offsetHeight;
+      }
+    });
 
     const handleResize = () => {
       if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth || 1200;
-      height = canvas.height = canvas.offsetHeight || 720;
+      width = canvas.width = canvas.offsetWidth || 1080;
+      height = canvas.height = canvas.offsetHeight || 604;
     };
     window.addEventListener("resize", handleResize);
 
