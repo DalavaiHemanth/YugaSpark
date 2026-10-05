@@ -300,8 +300,8 @@ export function Index() {
                   className="w-full h-full object-cover"
                   loading="lazy"
                   decoding="async"
-                  width={440}
-                  height={588}
+                  width={300}
+                  height={401}
                 />
               </div>
             </div>
